@@ -377,6 +377,29 @@ namespace CassetteMotionPro.Workspace
             table.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 95));
 
             AddMeasurementReferenceImageControls(table);
+
+            FlowLayoutPanel reviewActions = new FlowLayoutPanel();
+            reviewActions.Dock = DockStyle.Fill;
+            reviewActions.FlowDirection = FlowDirection.LeftToRight;
+            reviewActions.Padding = new Padding(0, 0, 0, 8);
+
+            Button reviewMetrics = CreateButton("Review Metrics", true);
+            reviewMetrics.Size = new Size(140, 34);
+            reviewMetrics.Click += ReviewMetrics_Click;
+            reviewActions.Controls.Add(reviewMetrics);
+
+            Label reviewHint = new Label();
+            reviewHint.Text = "Checks missing key bike metrics and flags values that may be worth reviewing before generating reports.";
+            reviewHint.AutoSize = true;
+            reviewHint.Margin = new Padding(12, 8, 0, 0);
+            reviewHint.ForeColor = Color.FromArgb(92, 104, 98);
+            reviewActions.Controls.Add(reviewHint);
+
+            int reviewRow = table.RowCount++;
+            table.RowStyles.Add(new RowStyle(SizeType.Absolute, 48));
+            table.Controls.Add(reviewActions, 0, reviewRow);
+            table.SetColumnSpan(reviewActions, 5);
+
             AddBikeMetricHeader(table);
             AddBikeMetricRow(table, "Saddle height", "Use Distance: BB center → saddle top along the seat tube / saddle-height line.", "SaddleHeight");
             AddBikeMetricRow(table, "Saddle setback", "BB vertical line → saddle nose, measured horizontally.", "SaddleSetback");
@@ -990,6 +1013,102 @@ namespace CassetteMotionPro.Workspace
             {
                 MessageBox.Show(this, "The fit session could not be saved.\n\n" + exception.Message, "Bike Fit Workspace", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
+        }
+
+        private void ReviewMetrics_Click(object sender, EventArgs e)
+        {
+            List<string> issues = new List<string>();
+            List<string> warnings = new List<string>();
+
+            ReviewRequiredMetric(issues, "Saddle height", "SaddleHeight");
+            ReviewRequiredMetric(issues, "Saddle setback", "SaddleSetback");
+            ReviewRequiredMetric(issues, "Saddle tip to grip reach", "SaddleTipToGripReach");
+            ReviewRequiredMetric(issues, "Handlebar X", "HandlebarX");
+            ReviewRequiredMetric(issues, "Handlebar Y", "HandlebarY");
+
+            ReviewMetricRange(warnings, "Saddle height After", "SaddleHeightAfter", 500, 900, "mm");
+            ReviewMetricRange(warnings, "Saddle setback After", "SaddleSetbackAfter", -120, 60, "mm");
+            ReviewMetricRange(warnings, "Saddle tip to grip reach After", "SaddleTipToGripReachAfter", 350, 750, "mm");
+            ReviewMetricRange(warnings, "Handlebar X After", "HandlebarXAfter", 300, 700, "mm");
+            ReviewMetricRange(warnings, "Handlebar Y After", "HandlebarYAfter", -180, 180, "mm");
+
+            string message;
+            MessageBoxIcon icon;
+            if (issues.Count == 0 && warnings.Count == 0)
+            {
+                message = "Ready for report.\n\nThe key bike metrics are filled in and the final values look within broad expected ranges.";
+                icon = MessageBoxIcon.Information;
+            }
+            else
+            {
+                message = "Bike Metrics Review\n\n";
+                if (issues.Count > 0)
+                    message += "Missing key values:\n- " + string.Join("\n- ", issues.ToArray()) + "\n\n";
+                if (warnings.Count > 0)
+                    message += "Values to double-check:\n- " + string.Join("\n- ", warnings.ToArray()) + "\n\n";
+                message += "These checks are advisory. They do not block saving, reporting, packaging, or zipping.";
+                icon = issues.Count > 0 ? MessageBoxIcon.Warning : MessageBoxIcon.Information;
+            }
+
+            UpdateSaveHint(issues.Count == 0 && warnings.Count == 0 ? "Bike Metrics review passed." : "Bike Metrics review found items to check.");
+            MessageBox.Show(this, message, "Review Metrics", MessageBoxButtons.OK, icon);
+        }
+
+        private void ReviewRequiredMetric(List<string> issues, string label, string metricKey)
+        {
+            string before = GetMeasurementText(metricKey + "Before");
+            string after = GetMeasurementText(metricKey + "After");
+
+            if (string.IsNullOrWhiteSpace(before) && string.IsNullOrWhiteSpace(after))
+            {
+                issues.Add(label + " Before and After are empty");
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(after))
+                issues.Add(label + " After is empty");
+        }
+
+        private void ReviewMetricRange(List<string> warnings, string label, string measurementKey, double minimum, double maximum, string unit)
+        {
+            string value = GetMeasurementText(measurementKey);
+            if (string.IsNullOrWhiteSpace(value))
+                return;
+
+            double parsed;
+            if (!TryParseMeasurementNumber(value, out parsed))
+            {
+                warnings.Add(label + " could not be read as a number: " + value);
+                return;
+            }
+
+            if (parsed < minimum || parsed > maximum)
+                warnings.Add(label + " is " + value + " (expected roughly " + minimum.ToString("0") + " to " + maximum.ToString("0") + " " + unit + ")");
+        }
+
+        private string GetMeasurementText(string key)
+        {
+            if (!measurementBoxes.ContainsKey(key))
+                return string.Empty;
+
+            return measurementBoxes[key].Text.Trim();
+        }
+
+        private static bool TryParseMeasurementNumber(string value, out double number)
+        {
+            number = 0;
+            if (string.IsNullOrWhiteSpace(value))
+                return false;
+
+            string text = value.Trim();
+            int index = 0;
+            while (index < text.Length && (char.IsDigit(text[index]) || text[index] == '-' || text[index] == '+' || text[index] == '.'))
+                index++;
+
+            if (index == 0)
+                return false;
+
+            return double.TryParse(text.Substring(0, index), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out number);
         }
 
         private void GenerateReport_Click(object sender, EventArgs e)
