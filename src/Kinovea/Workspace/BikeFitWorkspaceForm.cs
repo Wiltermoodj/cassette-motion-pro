@@ -193,6 +193,11 @@ namespace CassetteMotionPro.Workspace
             previewReport.Width = 135;
             previewReport.Click += PreviewReport_Click;
 
+            Button reportPackage = CreateButton("Report Package", false);
+            reportPackage.Dock = DockStyle.Right;
+            reportPackage.Width = 140;
+            reportPackage.Click += ReportPackage_Click;
+
             Button openReports = CreateButton("Open Reports", false);
             openReports.Dock = DockStyle.Right;
             openReports.Width = 125;
@@ -219,6 +224,7 @@ namespace CassetteMotionPro.Workspace
             actions.Controls.Add(save);
             actions.Controls.Add(report);
             actions.Controls.Add(previewReport);
+            actions.Controls.Add(reportPackage);
             actions.Controls.Add(openReports);
             actions.Controls.Add(chkShowBeforeMeasurementsInReport);
             actions.Controls.Add(saveHint);
@@ -967,6 +973,28 @@ namespace CassetteMotionPro.Workspace
             catch (Exception exception)
             {
                 MessageBox.Show(this, "The report preview could not be opened.\n\n" + exception.Message, "Report Preview", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void ReportPackage_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                SaveCurrentSession();
+                string packageFolder = FitSessionReportGenerator.GeneratePackage(client, currentSession);
+                Process.Start(packageFolder);
+                UpdateSaveHint("Report package created and opened.");
+                MessageBox.Show(this,
+                    "The report package was created in this client’s Reports folder.\n\n" +
+                    packageFolder + "\n\n" +
+                    "It includes the report HTML and copied report images.",
+                    "Report package created",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+            }
+            catch (Exception exception)
+            {
+                MessageBox.Show(this, "The report package could not be created.\n\n" + exception.Message, "Report Package", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 

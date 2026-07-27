@@ -31,8 +31,36 @@ namespace CassetteMotionPro.Workspace
 
             string fileName = BuildFileName(session);
             string path = Path.Combine(client.ReportsPath, fileName);
-            File.WriteAllText(path, BuildHtml(client, session), Encoding.UTF8);
+            File.WriteAllText(path, BuildHtml(client, session, ResolveAbsoluteImageSource), Encoding.UTF8);
             return path;
+        }
+
+        public static string GeneratePackage(ClientRecord client, FitSessionRecord session)
+        {
+            if (client == null)
+                throw new ArgumentNullException("client");
+            if (session == null)
+                throw new ArgumentNullException("session");
+            if (string.IsNullOrEmpty(client.ReportsPath))
+                throw new InvalidOperationException("The client Reports folder is not available.");
+
+            Directory.CreateDirectory(client.ReportsPath);
+
+            string packageFolder = GetUniqueDirectoryPath(Path.Combine(client.ReportsPath, BuildPackageFolderName(client, session)));
+            string imagesFolder = Path.Combine(packageFolder, "Images");
+            Directory.CreateDirectory(packageFolder);
+            Directory.CreateDirectory(imagesFolder);
+
+            Dictionary<string, string> imageMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            CopyPackageImages(session, imagesFolder, imageMap);
+
+            string reportPath = Path.Combine(packageFolder, "Bike Fit Report.html");
+            File.WriteAllText(reportPath, BuildHtml(client, session, delegate(string imagePath)
+            {
+                return ResolvePackageImageSource(imagePath, imageMap);
+            }), Encoding.UTF8);
+
+            return packageFolder;
         }
 
         private static string BuildFileName(FitSessionRecord session)
@@ -42,7 +70,88 @@ namespace CassetteMotionPro.Workspace
             return date + " - " + title + ".html";
         }
 
-        private static string BuildHtml(ClientRecord client, FitSessionRecord session)
+        private static string BuildPackageFolderName(ClientRecord client, FitSessionRecord session)
+        {
+            string clientName = CleanFileName(string.IsNullOrWhiteSpace(client.DisplayName) ? "Client" : client.DisplayName);
+            string title = CleanFileName(string.IsNullOrWhiteSpace(session.Title) ? "Bike Fit" : session.Title);
+            string date = session.SessionDate == DateTime.MinValue ? DateTime.Today.ToString("yyyy-MM-dd") : session.SessionDate.ToString("yyyy-MM-dd");
+            return (date + " " + clientName + " " + title + " Report Package").Trim();
+        }
+
+        private static string GetUniqueDirectoryPath(string basePath)
+        {
+            if (!Directory.Exists(basePath))
+                return basePath;
+
+            for (int index = 2; index < 1000; index++)
+            {
+                string candidate = basePath + " " + index.ToString(CultureInfo.InvariantCulture);
+                if (!Directory.Exists(candidate))
+                    return candidate;
+            }
+
+            return basePath + " " + DateTime.Now.ToString("HHmmss", CultureInfo.InvariantCulture);
+        }
+
+        private static void CopyPackageImages(FitSessionRecord session, string imagesFolder, Dictionary<string, string> imageMap)
+        {
+            if (!session.HideSideBySideImageInReport)
+                CopyPackageImage(session.SideBySideReportImagePath, "Side-by-side", imagesFolder, imageMap);
+            if (!session.HideBeforeImageInReport)
+                CopyPackageImage(session.BeforeReportImagePath, "Before", imagesFolder, imageMap);
+            if (!session.HideAfterImageInReport)
+                CopyPackageImage(session.AfterReportImagePath, "After", imagesFolder, imageMap);
+            if (!session.HideMeasurementReferenceImageInReport)
+                CopyPackageImage(session.MeasurementReferenceImagePath, "Measurement reference", imagesFolder, imageMap);
+        }
+
+        private static void CopyPackageImage(string sourcePath, string label, string imagesFolder, Dictionary<string, string> imageMap)
+        {
+            if (!HasReportImage(sourcePath))
+                return;
+
+            string sourceKey = Path.GetFullPath(sourcePath);
+            if (imageMap.ContainsKey(sourceKey))
+                return;
+
+            string extension = Path.GetExtension(sourcePath);
+            if (string.IsNullOrWhiteSpace(extension))
+                extension = ".jpg";
+
+            string fileName = CleanFileName(label);
+            if (string.IsNullOrWhiteSpace(fileName))
+                fileName = "Image";
+
+            string destinationPath = Path.Combine(imagesFolder, fileName + extension);
+            int index = 2;
+            while (File.Exists(destinationPath))
+            {
+                destinationPath = Path.Combine(imagesFolder, fileName + " " + index.ToString(CultureInfo.InvariantCulture) + extension);
+                index++;
+            }
+
+            File.Copy(sourcePath, destinationPath, false);
+            imageMap[sourceKey] = "Images/" + Uri.EscapeDataString(Path.GetFileName(destinationPath)).Replace("%20", " ");
+        }
+
+        private static string ResolveAbsoluteImageSource(string imagePath)
+        {
+            return new Uri(imagePath).AbsoluteUri;
+        }
+
+        private static string ResolvePackageImageSource(string imagePath, Dictionary<string, string> imageMap)
+        {
+            if (!string.IsNullOrWhiteSpace(imagePath))
+            {
+                string sourceKey = Path.GetFullPath(imagePath);
+                if (imageMap.ContainsKey(sourceKey))
+                    return imageMap[sourceKey];
+            }
+
+            return ResolveAbsoluteImageSource(imagePath);
+        }
+
+        private static string BuildHtml(ClientRecord client, FitSessionRecord session, Func<string, string> imageSourceResolver)
         {
             StringBuilder html = new StringBuilder();
             html.AppendLine("<!doctype html>");
@@ -135,14 +244,14 @@ namespace CassetteMotionPro.Workspace
             html.AppendLine("<h2>Visual Fit Review</h2>");
             html.AppendLine("<div class=\"section-kicker\">Selected images from the session. Use the Report Images tab to choose exactly what appears here.</div>");
             if (!session.HideSideBySideImageInReport && HasReportImage(session.SideBySideReportImagePath))
-                AddReportImage(html, "Side-by-side", session.SideBySideReportImagePath, true);
+                AddReportImage(html, "Side-by-side", session.SideBySideReportImagePath, true, imageSourceResolver);
             if (!session.HideBeforeImageInReport || !session.HideAfterImageInReport)
             {
                 html.AppendLine("<div class=\"media-grid\">");
                 if (!session.HideBeforeImageInReport)
-                    AddReportImage(html, "Before", session.BeforeReportImagePath, false);
+                    AddReportImage(html, "Before", session.BeforeReportImagePath, false, imageSourceResolver);
                 if (!session.HideAfterImageInReport)
-                    AddReportImage(html, "After", session.AfterReportImagePath, false);
+                    AddReportImage(html, "After", session.AfterReportImagePath, false, imageSourceResolver);
                 html.AppendLine("</div>");
             }
             if (session.HideSideBySideImageInReport && session.HideBeforeImageInReport && session.HideAfterImageInReport)
@@ -152,7 +261,7 @@ namespace CassetteMotionPro.Workspace
             {
                 html.AppendLine("<h2>Measurement Reference Image</h2>");
                 html.AppendLine("<div class=\"section-kicker\">Image used for manual bike metric reference and scale-assisted measurements.</div>");
-                AddReportImage(html, "Measurement reference", session.MeasurementReferenceImagePath, true);
+                AddReportImage(html, "Measurement reference", session.MeasurementReferenceImagePath, true, imageSourceResolver);
             }
 
             html.AppendLine("<h2>Bike Measurements</h2>");
@@ -208,7 +317,7 @@ namespace CassetteMotionPro.Workspace
 
             html.AppendLine("<h2>Recommendations and Notes</h2>");
             html.AppendLine("<div class=\"note\">" + EncodeOrPlaceholder(session.Notes) + "</div>");
-            html.AppendLine("<div class=\"footer\"><span>Generated by Cassette Motion Pro v0.10.6</span><span>Professional bike fitting report</span></div>");
+            html.AppendLine("<div class=\"footer\"><span>Generated by Cassette Motion Pro v0.10.7</span><span>Professional bike fitting report</span></div>");
             html.AppendLine("</div>");
             html.AppendLine("</div>");
             html.AppendLine("</body>");
@@ -359,12 +468,12 @@ namespace CassetteMotionPro.Workspace
             return !string.IsNullOrWhiteSpace(imagePath) && File.Exists(imagePath);
         }
 
-        private static void AddReportImage(StringBuilder html, string label, string imagePath, bool fullWidth)
+        private static void AddReportImage(StringBuilder html, string label, string imagePath, bool fullWidth, Func<string, string> imageSourceResolver)
         {
             string cardClass = fullWidth ? "media-card full" : "media-card";
             if (HasReportImage(imagePath))
             {
-                html.AppendLine("<div class=\"" + cardClass + "\"><img src=\"" + Encode(new Uri(imagePath).AbsoluteUri) + "\" alt=\"" + Encode(label) + " report image\"><div class=\"media-label\">" + Encode(label) + "</div></div>");
+                html.AppendLine("<div class=\"" + cardClass + "\"><img src=\"" + Encode(imageSourceResolver(imagePath)) + "\" alt=\"" + Encode(label) + " report image\"><div class=\"media-label\">" + Encode(label) + "</div></div>");
                 return;
             }
 
