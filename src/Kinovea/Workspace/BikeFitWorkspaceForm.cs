@@ -188,6 +188,11 @@ namespace CassetteMotionPro.Workspace
             report.Width = 145;
             report.Click += GenerateReport_Click;
 
+            Button previewReport = CreateButton("Preview Report", false);
+            previewReport.Dock = DockStyle.Right;
+            previewReport.Width = 135;
+            previewReport.Click += PreviewReport_Click;
+
             Button openReports = CreateButton("Open Reports", false);
             openReports.Dock = DockStyle.Right;
             openReports.Width = 125;
@@ -213,6 +218,7 @@ namespace CassetteMotionPro.Workspace
             actions.Controls.Add(close);
             actions.Controls.Add(save);
             actions.Controls.Add(report);
+            actions.Controls.Add(previewReport);
             actions.Controls.Add(openReports);
             actions.Controls.Add(chkShowBeforeMeasurementsInReport);
             actions.Controls.Add(saveHint);
@@ -946,6 +952,21 @@ namespace CassetteMotionPro.Workspace
             catch (Exception exception)
             {
                 MessageBox.Show(this, "The report could not be created.\n\n" + exception.Message, "Report", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void PreviewReport_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                SaveCurrentSession();
+                string reportPath = FitSessionReportGenerator.Generate(client, currentSession);
+                Process.Start(reportPath);
+                UpdateSaveHint("Report preview opened. Use Print / Save PDF after reviewing it.");
+            }
+            catch (Exception exception)
+            {
+                MessageBox.Show(this, "The report preview could not be opened.\n\n" + exception.Message, "Report Preview", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
