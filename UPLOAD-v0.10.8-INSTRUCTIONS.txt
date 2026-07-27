@@ -1,0 +1,59 @@
+Cassette Motion Pro v0.10.8 - Report Package Zip
+
+This update creates a zipped report package for easier client handoff, upload,
+or sharing.
+
+What changed:
+
+- Adds a Zip button to the Bike Fit Workspace.
+- Zip saves the session, creates a fresh report package, zips it, and
+  opens the client Reports folder.
+- The zip includes Bike Fit Report.html and copied report images.
+- Keeps the v0.10.7 report package folder workflow.
+- Keeps the v0.10.6 report preview workflow.
+- Keeps the v0.10.5 Fit Summary workflow.
+- Keeps the v0.10.4 installer resource hardening.
+- Updates app/build/installer/report versions to 0.10.8.
+
+Upload steps:
+
+1. Open your GitHub repository:
+   https://github.com/spooled/cassette-motion-pro
+
+2. Upload everything from this package to the repo root.
+
+   Important:
+   - Include the hidden .github folder.
+   - The workflow file must end up here:
+
+     .github/workflows/build.yml
+
+3. Commit with this message:
+
+   Add v0.10.8 report package zip
+
+4. Go to Actions.
+
+5. Open the newest run.
+
+6. Download:
+
+   CassetteMotionPro-Windows-0.10.8
+
+What to test:
+
+1. Open Bike Fit Workspace.
+2. Open or create a fit session.
+3. Add at least one report image.
+4. Click Zip.
+5. Confirm the Reports folder opens.
+6. Confirm a .zip report package was created.
+7. Open the zip.
+8. Confirm it contains Bike Fit Report.html.
+9. Confirm it contains an Images folder.
+10. Confirm the Images folder has copied report images.
+11. Open INSTALLER-BUILD-STATUS.txt from the Windows bundle.
+12. Confirm it says Installer build status: SUCCESS.
+13. Confirm the bundle contains CassetteMotionPro-Installer-0.10.8.exe.
+14. Run the installer on Windows.
+15. Confirm the app opens after install.

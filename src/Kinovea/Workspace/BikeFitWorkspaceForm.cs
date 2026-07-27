@@ -175,38 +175,43 @@ namespace CassetteMotionPro.Workspace
 
             Button close = CreateButton("Save && Close", false);
             close.Dock = DockStyle.Right;
-            close.Width = 120;
+            close.Width = 105;
             close.Click += delegate { Close(); };
 
-            Button save = CreateButton("Save Session", true);
+            Button save = CreateButton("Save", true);
             save.Dock = DockStyle.Right;
-            save.Width = 130;
+            save.Width = 82;
             save.Click += Save_Click;
 
-            Button report = CreateButton("Generate Report", false);
+            Button report = CreateButton("Generate", false);
             report.Dock = DockStyle.Right;
-            report.Width = 145;
+            report.Width = 96;
             report.Click += GenerateReport_Click;
 
-            Button previewReport = CreateButton("Preview Report", false);
+            Button previewReport = CreateButton("Preview", false);
             previewReport.Dock = DockStyle.Right;
-            previewReport.Width = 135;
+            previewReport.Width = 88;
             previewReport.Click += PreviewReport_Click;
 
-            Button reportPackage = CreateButton("Report Package", false);
+            Button reportPackage = CreateButton("Package", false);
             reportPackage.Dock = DockStyle.Right;
-            reportPackage.Width = 140;
+            reportPackage.Width = 92;
             reportPackage.Click += ReportPackage_Click;
 
-            Button openReports = CreateButton("Open Reports", false);
+            Button zipReportPackage = CreateButton("Zip", false);
+            zipReportPackage.Dock = DockStyle.Right;
+            zipReportPackage.Width = 70;
+            zipReportPackage.Click += ZipReportPackage_Click;
+
+            Button openReports = CreateButton("Reports", false);
             openReports.Dock = DockStyle.Right;
-            openReports.Width = 125;
+            openReports.Width = 86;
             openReports.Click += OpenReports_Click;
 
             chkShowBeforeMeasurementsInReport.Text = "Show Before measurements in report";
             chkShowBeforeMeasurementsInReport.Checked = true;
             chkShowBeforeMeasurementsInReport.Dock = DockStyle.Right;
-            chkShowBeforeMeasurementsInReport.Width = 245;
+            chkShowBeforeMeasurementsInReport.Width = 215;
             chkShowBeforeMeasurementsInReport.TextAlign = ContentAlignment.MiddleLeft;
             chkShowBeforeMeasurementsInReport.ForeColor = Color.FromArgb(24, 31, 29);
             chkShowBeforeMeasurementsInReport.CheckedChanged += delegate
@@ -225,6 +230,7 @@ namespace CassetteMotionPro.Workspace
             actions.Controls.Add(report);
             actions.Controls.Add(previewReport);
             actions.Controls.Add(reportPackage);
+            actions.Controls.Add(zipReportPackage);
             actions.Controls.Add(openReports);
             actions.Controls.Add(chkShowBeforeMeasurementsInReport);
             actions.Controls.Add(saveHint);
@@ -995,6 +1001,27 @@ namespace CassetteMotionPro.Workspace
             catch (Exception exception)
             {
                 MessageBox.Show(this, "The report package could not be created.\n\n" + exception.Message, "Report Package", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void ZipReportPackage_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                SaveCurrentSession();
+                string zipPath = FitSessionReportGenerator.GeneratePackageZip(client, currentSession);
+                Process.Start(client.ReportsPath);
+                UpdateSaveHint("Zipped report package created in the Reports folder.");
+                MessageBox.Show(this,
+                    "The zipped report package was created in this client’s Reports folder.\n\n" +
+                    zipPath,
+                    "Zipped report package created",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+            }
+            catch (Exception exception)
+            {
+                MessageBox.Show(this, "The zipped report package could not be created.\n\n" + exception.Message, "Zip Report Package", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
