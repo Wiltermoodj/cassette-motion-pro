@@ -5,7 +5,7 @@ Cassette Motion Pro is professional bike fitting software built on the
 keeps bike-fit-specific code and branding isolated so upstream Kinovea updates
 can be incorporated with minimal changes to the playback and annotation engine.
 
-## Current milestone: 0.10.8 report package zip
+## Current milestone: 0.10.9 client handoff notes
 
 - Complete Kinovea source imported under `src/`
 - Application output renamed to `CassetteMotionPro.exe`
@@ -83,6 +83,10 @@ can be incorporated with minimal changes to the playback and annotation engine.
   copied report images so the package can be reviewed from one place
 - Zip button creates a zipped report package for easier sharing with
   clients or uploading to cloud storage
+- Handoff tab records what to send, client follow-up message, homework/ride
+  instructions, next appointment, and internal handoff notes
+- Report packages and zipped packages include `Client Handoff Notes.txt` as a
+  separate handoff/checklist file
 
 The expanded body-angle measurement library and polished PDF report generator
 remain future milestones. See [docs/roadmap.md](docs/roadmap.md).

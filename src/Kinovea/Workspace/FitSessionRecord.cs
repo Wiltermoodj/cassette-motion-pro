@@ -25,6 +25,11 @@ namespace CassetteMotionPro.Workspace
         public string FitSummaryChangesMade { get; set; }
         public string FitSummaryRecommendations { get; set; }
         public string FitSummaryFollowUp { get; set; }
+        public string HandoffWhatToSend { get; set; }
+        public string HandoffClientMessage { get; set; }
+        public string HandoffHomework { get; set; }
+        public string HandoffNextAppointment { get; set; }
+        public string HandoffInternalNotes { get; set; }
 
         public string LeftVideoPath { get; set; }
         public string RightVideoPath { get; set; }
