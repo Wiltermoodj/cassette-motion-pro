@@ -61,6 +61,7 @@ namespace CassetteMotionPro.Workspace
                 return ResolvePackageImageSource(imagePath, imageMap);
             }), Encoding.UTF8);
             File.WriteAllText(Path.Combine(packageFolder, "Client Handoff Notes.txt"), BuildHandoffText(client, session), Encoding.UTF8);
+            File.WriteAllText(Path.Combine(packageFolder, "Bike Metrics Review.txt"), BuildBikeMetricsReviewText(client, session), Encoding.UTF8);
 
             return packageFolder;
         }
@@ -101,6 +102,124 @@ namespace CassetteMotionPro.Workspace
             AddHandoffSection(text, "Next appointment", session.HandoffNextAppointment);
             AddHandoffSection(text, "Internal notes", session.HandoffInternalNotes);
             return text.ToString();
+        }
+
+        private static string BuildBikeMetricsReviewText(ClientRecord client, FitSessionRecord session)
+        {
+            List<string> issues = new List<string>();
+            List<string> warnings = new List<string>();
+
+            ReviewRequiredMetric(issues, "Saddle height", session.SaddleHeightBefore, session.SaddleHeightAfter, "Use Guided Capture or Distance from BB center to saddle top. Confirm the value is entered in mm.");
+            ReviewRequiredMetric(issues, "Saddle setback", session.SaddleSetbackBefore, session.SaddleSetbackAfter, "Use horizontal distance from BB vertical line to saddle tip. Negative is OK when the saddle tip is behind the BB.");
+            ReviewRequiredMetric(issues, "Saddle tip to grip reach", session.SaddleTipToGripReachBefore, session.SaddleTipToGripReachAfter, "Use Distance or horizontal assist from saddle tip to grip/hood contact point.");
+            ReviewRequiredMetric(issues, "Handlebar X", session.HandlebarXBefore, session.HandlebarXAfter, "Use horizontal distance from BB center to grip/hood contact point.");
+            ReviewRequiredMetric(issues, "Handlebar Y", session.HandlebarYBefore, session.HandlebarYAfter, "Use vertical distance from BB center to grip/hood contact point. Recheck image level/calibration if this looks strange.");
+
+            ReviewMetricRange(warnings, "Saddle height After", session.SaddleHeightAfter, 500, 900, "mm", "If low or high, recheck calibration and the BB to saddle top click points.");
+            ReviewMetricRange(warnings, "Saddle setback After", session.SaddleSetbackAfter, -120, 60, "mm", "Behind BB should be negative. If the sign is backwards, use Flip Setback Sign or re-enter the value.");
+            ReviewMetricRange(warnings, "Saddle tip to grip reach After", session.SaddleTipToGripReachAfter, 350, 750, "mm", "If short or long, confirm you clicked saddle tip and the actual grip/hood contact point.");
+            ReviewMetricRange(warnings, "Handlebar X After", session.HandlebarXAfter, 300, 700, "mm", "Confirm this is horizontal distance from BB to the grip/hood contact point.");
+            ReviewMetricRange(warnings, "Handlebar Y After", session.HandlebarYAfter, -180, 180, "mm", "Confirm the image is level and the vertical direction is correct.");
+
+            StringBuilder text = new StringBuilder();
+            text.AppendLine("Cassette Motion Pro - Bike Metrics Review");
+            text.AppendLine("==========================================");
+            text.AppendLine();
+            text.AppendLine("Client: " + ValueOrPlaceholder(client.DisplayName));
+            text.AppendLine("Bike: " + ValueOrPlaceholder(client.BikeDescription));
+            text.AppendLine("Session: " + ValueOrPlaceholder(session.DisplayName));
+            text.AppendLine("Date: " + (session.SessionDate == DateTime.MinValue ? DateTime.Today.ToString("MMM d, yyyy") : session.SessionDate.ToString("MMM d, yyyy")));
+            text.AppendLine();
+
+            if (issues.Count == 0 && warnings.Count == 0)
+            {
+                text.AppendLine("Status: Ready for report");
+                text.AppendLine();
+                text.AppendLine("The key Bike Metrics are filled in and the final values look within broad expected ranges.");
+                text.AppendLine();
+                text.AppendLine("Next action: generate, preview, package, or zip the report.");
+            }
+            else
+            {
+                text.AppendLine("Status: Needs review");
+                text.AppendLine();
+                AddReviewSection(text, "Missing key values", issues);
+                AddReviewSection(text, "Values to double-check", warnings);
+                text.AppendLine("Next action");
+                text.AppendLine("-----------");
+                text.AppendLine("Recheck Guided Capture, calibration, or manual entries as needed.");
+            }
+
+            text.AppendLine();
+            text.AppendLine("Reminder");
+            text.AppendLine("--------");
+            text.AppendLine("These checks are advisory. They do not block saving, reporting, packaging, or zipping.");
+            text.AppendLine("Saddle setback behind BB should be negative; in front of BB should be positive.");
+            return text.ToString();
+        }
+
+        private static void AddReviewSection(StringBuilder text, string label, List<string> items)
+        {
+            text.AppendLine(label);
+            text.AppendLine(new string('-', label.Length));
+            if (items.Count == 0)
+            {
+                text.AppendLine("None");
+                text.AppendLine();
+                return;
+            }
+
+            foreach (string item in items)
+                text.AppendLine("- " + item);
+            text.AppendLine();
+        }
+
+        private static void ReviewRequiredMetric(List<string> issues, string label, string before, string after, string nextAction)
+        {
+            if (string.IsNullOrWhiteSpace(before) && string.IsNullOrWhiteSpace(after))
+            {
+                issues.Add(label + ": Before and After are empty. Next action: " + nextAction);
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(after))
+                issues.Add(label + ": After is empty. Next action: enter final/After value before reporting.");
+
+            if (string.IsNullOrWhiteSpace(before))
+                issues.Add(label + ": Before is empty. This is OK for final-only reports, but fill it in if you want Before / After comparison.");
+        }
+
+        private static void ReviewMetricRange(List<string> warnings, string label, string value, double minimum, double maximum, string unit, string nextAction)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return;
+
+            double parsed;
+            if (!TryParseMeasurementNumber(value, out parsed))
+            {
+                warnings.Add(label + ": could not be read as a number from \"" + value + "\". Next action: enter like 742 mm or -35 mm.");
+                return;
+            }
+
+            if (parsed < minimum || parsed > maximum)
+                warnings.Add(label + ": " + value + " is outside the broad review range of " + minimum.ToString("0") + " to " + maximum.ToString("0") + " " + unit + ". Next action: " + nextAction);
+        }
+
+        private static bool TryParseMeasurementNumber(string value, out double number)
+        {
+            number = 0;
+            if (string.IsNullOrWhiteSpace(value))
+                return false;
+
+            string text = value.Trim();
+            int index = 0;
+            while (index < text.Length && (char.IsDigit(text[index]) || text[index] == '-' || text[index] == '+' || text[index] == '.'))
+                index++;
+
+            if (index == 0)
+                return false;
+
+            return double.TryParse(text.Substring(0, index), NumberStyles.Float, CultureInfo.InvariantCulture, out number);
         }
 
         private static void AddHandoffSection(StringBuilder text, string label, string value)
@@ -363,7 +482,7 @@ namespace CassetteMotionPro.Workspace
 
             html.AppendLine("<h2>Recommendations and Notes</h2>");
             html.AppendLine("<div class=\"note\">" + EncodeOrPlaceholder(session.Notes) + "</div>");
-            html.AppendLine("<div class=\"footer\"><span>Generated by Cassette Motion Pro v0.11.1</span><span>Professional bike fitting report</span></div>");
+            html.AppendLine("<div class=\"footer\"><span>Generated by Cassette Motion Pro v0.11.2</span><span>Professional bike fitting report</span></div>");
             html.AppendLine("</div>");
             html.AppendLine("</div>");
             html.AppendLine("</body>");
