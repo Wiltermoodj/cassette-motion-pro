@@ -5,7 +5,7 @@ Cassette Motion Pro is professional bike fitting software built on the
 keeps bike-fit-specific code and branding isolated so upstream Kinovea updates
 can be incorporated with minimal changes to the playback and annotation engine.
 
-## Current milestone: 0.11.0 bike metrics review
+## Current milestone: 0.11.1 metric review details
 
 - Complete Kinovea source imported under `src/`
 - Application output renamed to `CassetteMotionPro.exe`
@@ -91,6 +91,10 @@ can be incorporated with minimal changes to the playback and annotation engine.
   measurements before reporting
 - Review Metrics also flags broad out-of-range final values for saddle height,
   saddle setback, saddle-tip-to-grip reach, and handlebar X/Y
+- Review Metrics now explains which side is missing, why a value is flagged,
+  and the next action to take
+- Saddle setback review explicitly reminds fitters that behind BB should be
+  negative
 
 The expanded body-angle measurement library and polished PDF report generator
 remain future milestones. See [docs/roadmap.md](docs/roadmap.md).

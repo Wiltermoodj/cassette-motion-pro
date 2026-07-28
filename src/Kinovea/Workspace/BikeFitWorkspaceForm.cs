@@ -1020,23 +1020,23 @@ namespace CassetteMotionPro.Workspace
             List<string> issues = new List<string>();
             List<string> warnings = new List<string>();
 
-            ReviewRequiredMetric(issues, "Saddle height", "SaddleHeight");
-            ReviewRequiredMetric(issues, "Saddle setback", "SaddleSetback");
-            ReviewRequiredMetric(issues, "Saddle tip to grip reach", "SaddleTipToGripReach");
-            ReviewRequiredMetric(issues, "Handlebar X", "HandlebarX");
-            ReviewRequiredMetric(issues, "Handlebar Y", "HandlebarY");
+            ReviewRequiredMetric(issues, "Saddle height", "SaddleHeight", "Use Guided Capture or Distance from BB center to saddle top. Confirm the value is entered in mm.");
+            ReviewRequiredMetric(issues, "Saddle setback", "SaddleSetback", "Use horizontal distance from BB vertical line to saddle tip. Negative is OK when the saddle tip is behind the BB.");
+            ReviewRequiredMetric(issues, "Saddle tip to grip reach", "SaddleTipToGripReach", "Use Distance or horizontal assist from saddle tip to grip/hood contact point.");
+            ReviewRequiredMetric(issues, "Handlebar X", "HandlebarX", "Use horizontal distance from BB center to grip/hood contact point.");
+            ReviewRequiredMetric(issues, "Handlebar Y", "HandlebarY", "Use vertical distance from BB center to grip/hood contact point. Recheck image level/calibration if this looks strange.");
 
-            ReviewMetricRange(warnings, "Saddle height After", "SaddleHeightAfter", 500, 900, "mm");
-            ReviewMetricRange(warnings, "Saddle setback After", "SaddleSetbackAfter", -120, 60, "mm");
-            ReviewMetricRange(warnings, "Saddle tip to grip reach After", "SaddleTipToGripReachAfter", 350, 750, "mm");
-            ReviewMetricRange(warnings, "Handlebar X After", "HandlebarXAfter", 300, 700, "mm");
-            ReviewMetricRange(warnings, "Handlebar Y After", "HandlebarYAfter", -180, 180, "mm");
+            ReviewMetricRange(warnings, "Saddle height After", "SaddleHeightAfter", 500, 900, "mm", "If low or high, recheck calibration and the BB → saddle top click points.");
+            ReviewMetricRange(warnings, "Saddle setback After", "SaddleSetbackAfter", -120, 60, "mm", "Behind BB should be negative. If the sign is backwards, use Flip Setback Sign or re-enter the value.");
+            ReviewMetricRange(warnings, "Saddle tip to grip reach After", "SaddleTipToGripReachAfter", 350, 750, "mm", "If short or long, confirm you clicked saddle tip and the actual grip/hood contact point.");
+            ReviewMetricRange(warnings, "Handlebar X After", "HandlebarXAfter", 300, 700, "mm", "Confirm this is horizontal distance from BB to the grip/hood contact point.");
+            ReviewMetricRange(warnings, "Handlebar Y After", "HandlebarYAfter", -180, 180, "mm", "Confirm the image is level and the vertical direction is correct.");
 
             string message;
             MessageBoxIcon icon;
             if (issues.Count == 0 && warnings.Count == 0)
             {
-                message = "Ready for report.\n\nThe key bike metrics are filled in and the final values look within broad expected ranges.";
+                message = "Ready for report.\n\nThe key Bike Metrics are filled in and the final values look within broad expected ranges.\n\nNext action: generate, preview, package, or zip the report.";
                 icon = MessageBoxIcon.Information;
             }
             else
@@ -1046,7 +1046,7 @@ namespace CassetteMotionPro.Workspace
                     message += "Missing key values:\n- " + string.Join("\n- ", issues.ToArray()) + "\n\n";
                 if (warnings.Count > 0)
                     message += "Values to double-check:\n- " + string.Join("\n- ", warnings.ToArray()) + "\n\n";
-                message += "These checks are advisory. They do not block saving, reporting, packaging, or zipping.";
+                message += "Next action: recheck Guided Capture, calibration, or manual entries as needed.\n\nThese checks are advisory. They do not block saving, reporting, packaging, or zipping.";
                 icon = issues.Count > 0 ? MessageBoxIcon.Warning : MessageBoxIcon.Information;
             }
 
@@ -1054,22 +1054,25 @@ namespace CassetteMotionPro.Workspace
             MessageBox.Show(this, message, "Review Metrics", MessageBoxButtons.OK, icon);
         }
 
-        private void ReviewRequiredMetric(List<string> issues, string label, string metricKey)
+        private void ReviewRequiredMetric(List<string> issues, string label, string metricKey, string nextAction)
         {
             string before = GetMeasurementText(metricKey + "Before");
             string after = GetMeasurementText(metricKey + "After");
 
             if (string.IsNullOrWhiteSpace(before) && string.IsNullOrWhiteSpace(after))
             {
-                issues.Add(label + " Before and After are empty");
+                issues.Add(label + ": Before and After are empty. Next action: " + nextAction);
                 return;
             }
 
             if (string.IsNullOrWhiteSpace(after))
-                issues.Add(label + " After is empty");
+                issues.Add(label + ": After is empty. Next action: enter final/After value before reporting.");
+
+            if (string.IsNullOrWhiteSpace(before))
+                issues.Add(label + ": Before is empty. This is OK for final-only reports, but fill it in if you want Before / After comparison.");
         }
 
-        private void ReviewMetricRange(List<string> warnings, string label, string measurementKey, double minimum, double maximum, string unit)
+        private void ReviewMetricRange(List<string> warnings, string label, string measurementKey, double minimum, double maximum, string unit, string nextAction)
         {
             string value = GetMeasurementText(measurementKey);
             if (string.IsNullOrWhiteSpace(value))
@@ -1078,12 +1081,12 @@ namespace CassetteMotionPro.Workspace
             double parsed;
             if (!TryParseMeasurementNumber(value, out parsed))
             {
-                warnings.Add(label + " could not be read as a number: " + value);
+                warnings.Add(label + ": could not be read as a number from \"" + value + "\". Next action: enter like 742 mm or -35 mm.");
                 return;
             }
 
             if (parsed < minimum || parsed > maximum)
-                warnings.Add(label + " is " + value + " (expected roughly " + minimum.ToString("0") + " to " + maximum.ToString("0") + " " + unit + ")");
+                warnings.Add(label + ": " + value + " is outside the broad review range of " + minimum.ToString("0") + " to " + maximum.ToString("0") + " " + unit + ". Next action: " + nextAction);
         }
 
         private string GetMeasurementText(string key)
