@@ -61,6 +61,7 @@ namespace CassetteMotionPro.Workspace
                 return ResolvePackageImageSource(imagePath, imageMap);
             }), Encoding.UTF8);
             File.WriteAllText(Path.Combine(packageFolder, "README - Open This First.txt"), BuildPackageReadmeText(client, session), Encoding.UTF8);
+            File.WriteAllText(Path.Combine(packageFolder, "Session Summary.txt"), BuildSessionSummaryText(client, session), Encoding.UTF8);
             File.WriteAllText(Path.Combine(packageFolder, "Client Handoff Notes.txt"), BuildHandoffText(client, session), Encoding.UTF8);
             File.WriteAllText(Path.Combine(packageFolder, "Bike Metrics Review.txt"), BuildBikeMetricsReviewText(client, session), Encoding.UTF8);
 
@@ -100,9 +101,10 @@ namespace CassetteMotionPro.Workspace
             text.AppendLine("Start here");
             text.AppendLine("----------");
             text.AppendLine("1. Open Bike Fit Report.html to view the polished report.");
-            text.AppendLine("2. Open Bike Metrics Review.txt to check missing values or values that may need another look.");
-            text.AppendLine("3. Open Client Handoff Notes.txt only if you used the handoff tab or want to copy follow-up notes.");
-            text.AppendLine("4. The Images folder contains the report images copied into this package.");
+            text.AppendLine("2. Open Session Summary.txt for a quick plain-text overview of the fit.");
+            text.AppendLine("3. Open Bike Metrics Review.txt to check missing values or values that may need another look.");
+            text.AppendLine("4. Open Client Handoff Notes.txt only if you used the handoff tab or want to copy follow-up notes.");
+            text.AppendLine("5. The Images folder contains the report images copied into this package.");
             text.AppendLine();
             text.AppendLine("Suggested flow");
             text.AppendLine("--------------");
@@ -114,6 +116,68 @@ namespace CassetteMotionPro.Workspace
             text.AppendLine("--------");
             text.AppendLine("Bike Metrics Review is advisory. It helps catch missing or unusual values, but it does not block reporting.");
             text.AppendLine("Saddle setback behind BB should be negative; in front of BB should be positive.");
+            return text.ToString();
+        }
+
+        private static string BuildSessionSummaryText(ClientRecord client, FitSessionRecord session)
+        {
+            StringBuilder text = new StringBuilder();
+            text.AppendLine("Cassette Motion Pro - Session Summary");
+            text.AppendLine("=====================================");
+            text.AppendLine();
+            text.AppendLine("Client: " + ValueOrPlaceholder(client.DisplayName));
+            text.AppendLine("Bike: " + ValueOrPlaceholder(client.BikeDescription));
+            text.AppendLine("Session: " + ValueOrPlaceholder(session.DisplayName));
+            text.AppendLine("Date: " + (session.SessionDate == DateTime.MinValue ? DateTime.Today.ToString("MMM d, yyyy") : session.SessionDate.ToString("MMM d, yyyy")));
+            text.AppendLine("Status: " + ValueOrPlaceholder(session.Status));
+            text.AppendLine("Report view: " + (session.HideBeforeMeasurementsInReport ? "Final fit only" : "Before / After"));
+            text.AppendLine();
+
+            AddSummarySection(text, "Rider goals", session.Goals);
+            AddSummarySection(text, "Fit summary - Main goal", session.FitSummaryMainGoal);
+            AddSummarySection(text, "Fit summary - Key findings", session.FitSummaryKeyFindings);
+            AddSummarySection(text, "Fit summary - Changes made", session.FitSummaryChangesMade);
+            AddSummarySection(text, "Fit summary - Recommendations", session.FitSummaryRecommendations);
+            AddSummarySection(text, "Fit summary - Follow-up plan", session.FitSummaryFollowUp);
+
+            text.AppendLine("Key bike metrics");
+            text.AppendLine("----------------");
+            AddSummaryMetric(text, "Saddle height", session.SaddleHeightBefore, session.SaddleHeightAfter, !session.HideBeforeMeasurementsInReport);
+            AddSummaryMetric(text, "Saddle setback", session.SaddleSetbackBefore, session.SaddleSetbackAfter, !session.HideBeforeMeasurementsInReport);
+            AddSummaryMetric(text, "Saddle tip to grip reach", session.SaddleTipToGripReachBefore, session.SaddleTipToGripReachAfter, !session.HideBeforeMeasurementsInReport);
+            AddSummaryMetric(text, "Handlebar X", session.HandlebarXBefore, session.HandlebarXAfter, !session.HideBeforeMeasurementsInReport);
+            AddSummaryMetric(text, "Handlebar Y", session.HandlebarYBefore, session.HandlebarYAfter, !session.HideBeforeMeasurementsInReport);
+            AddSummaryMetric(text, "Crank length", session.CrankLengthBefore, session.CrankLengthAfter, !session.HideBeforeMeasurementsInReport);
+            AddSummaryMetric(text, "Wheelbase", session.WheelbaseBefore, session.WheelbaseAfter, !session.HideBeforeMeasurementsInReport);
+            text.AppendLine();
+
+            text.AppendLine("Body angles");
+            text.AppendLine("-----------");
+            AddSummaryMetric(text, "Knee angle", session.KneeAngleBefore, session.KneeAngleAfter, !session.HideBeforeMeasurementsInReport);
+            AddSummaryMetric(text, "Hip angle", session.HipAngleBefore, session.HipAngleAfter, !session.HideBeforeMeasurementsInReport);
+            AddSummaryMetric(text, "Ankle angle", session.AnkleAngleBefore, session.AnkleAngleAfter, !session.HideBeforeMeasurementsInReport);
+            AddSummaryMetric(text, "Torso angle", session.TorsoAngleBefore, session.TorsoAngleAfter, !session.HideBeforeMeasurementsInReport);
+            AddSummaryMetric(text, "Shoulder angle", session.ShoulderAngleBefore, session.ShoulderAngleAfter, !session.HideBeforeMeasurementsInReport);
+            AddSummaryMetric(text, "Elbow angle", session.ElbowAngleBefore, session.ElbowAngleAfter, !session.HideBeforeMeasurementsInReport);
+            text.AppendLine();
+
+            AddSummarySection(text, "Recommendations and notes", session.Notes);
+
+            if (HasHandoffContent(session))
+            {
+                text.AppendLine("Handoff reminder");
+                text.AppendLine("----------------");
+                text.AppendLine("This session has handoff notes. Open Client Handoff Notes.txt before sending follow-up.");
+                text.AppendLine();
+            }
+
+            text.AppendLine("Package files");
+            text.AppendLine("-------------");
+            text.AppendLine("- Bike Fit Report.html");
+            text.AppendLine("- Session Summary.txt");
+            text.AppendLine("- Bike Metrics Review.txt");
+            text.AppendLine("- Client Handoff Notes.txt");
+            text.AppendLine("- Images folder");
             return text.ToString();
         }
 
@@ -260,6 +324,49 @@ namespace CassetteMotionPro.Workspace
             text.AppendLine(new string('-', label.Length));
             text.AppendLine(ValueOrPlaceholder(value));
             text.AppendLine();
+        }
+
+        private static void AddSummarySection(StringBuilder text, string label, string value)
+        {
+            text.AppendLine(label);
+            text.AppendLine(new string('-', label.Length));
+            text.AppendLine(ValueOrPlaceholder(value));
+            text.AppendLine();
+        }
+
+        private static void AddSummaryMetric(StringBuilder text, string label, string before, string after, bool includeBefore)
+        {
+            if (includeBefore)
+                text.AppendLine("- " + label + ": Before " + ValueOrPlaceholder(before) + " | After " + ValueOrPlaceholder(after) + " | Change " + FormatTextChange(before, after));
+            else
+                text.AppendLine("- " + label + ": " + ValueOrPlaceholder(after));
+        }
+
+        private static string FormatTextChange(string before, string after)
+        {
+            double beforeValue;
+            double afterValue;
+            string beforeUnit;
+            string afterUnit;
+
+            if (!TryParseMeasurement(before, out beforeValue, out beforeUnit) || !TryParseMeasurement(after, out afterValue, out afterUnit))
+                return "Not calculated";
+
+            double difference = afterValue - beforeValue;
+            string unit = string.IsNullOrWhiteSpace(afterUnit) ? beforeUnit : afterUnit;
+            if (!string.IsNullOrWhiteSpace(unit))
+                unit = " " + unit.Trim();
+            string sign = difference > 0 ? "+" : string.Empty;
+            return sign + difference.ToString("0.##", CultureInfo.InvariantCulture) + unit;
+        }
+
+        private static bool HasHandoffContent(FitSessionRecord session)
+        {
+            return !string.IsNullOrWhiteSpace(session.HandoffWhatToSend) ||
+                !string.IsNullOrWhiteSpace(session.HandoffClientMessage) ||
+                !string.IsNullOrWhiteSpace(session.HandoffHomework) ||
+                !string.IsNullOrWhiteSpace(session.HandoffNextAppointment) ||
+                !string.IsNullOrWhiteSpace(session.HandoffInternalNotes);
         }
 
         private static string ValueOrPlaceholder(string value)
@@ -514,7 +621,7 @@ namespace CassetteMotionPro.Workspace
 
             html.AppendLine("<h2>Recommendations and Notes</h2>");
             html.AppendLine("<div class=\"note\">" + EncodeOrPlaceholder(session.Notes) + "</div>");
-            html.AppendLine("<div class=\"footer\"><span>Generated by Cassette Motion Pro v0.11.3</span><span>Professional bike fitting report</span></div>");
+            html.AppendLine("<div class=\"footer\"><span>Generated by Cassette Motion Pro v0.11.4</span><span>Professional bike fitting report</span></div>");
             html.AppendLine("</div>");
             html.AppendLine("</div>");
             html.AppendLine("</body>");

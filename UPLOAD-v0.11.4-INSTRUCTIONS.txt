@@ -1,0 +1,73 @@
+Cassette Motion Pro v0.11.4 - Session Summary Package
+
+This update adds a quick plain-text session summary to report packages and
+zipped packages.
+
+What changed:
+
+- Adds README - Open This First.txt to report package folders.
+- Zipped packages also include README - Open This First.txt.
+- Adds Session Summary.txt to report package folders.
+- Zipped packages also include Session Summary.txt.
+- The summary includes client, bike, session/date/status, report view, fit
+  summary fields, key bike metrics, body angles, notes, and a handoff reminder
+  when handoff notes are filled in.
+- README - Open This First.txt now points to Session Summary.txt as the quick
+  overview file.
+- Keeps the v0.11.3 clean handoff package workflow.
+- Keeps the v0.11.2 Bike Metrics Review.txt package workflow.
+- Keeps the v0.11.1 detailed Review Metrics button.
+- Keeps the v0.10.9 handoff notes workflow.
+- Keeps the v0.10.8 Zip workflow.
+- Keeps the v0.10.7 report package folder workflow.
+- Keeps the v0.10.6 report preview workflow.
+- Keeps the v0.10.5 Fit Summary workflow.
+- Updates app/build/installer/report versions to 0.11.4.
+
+Upload steps:
+
+1. Open your GitHub repository:
+   https://github.com/spooled/cassette-motion-pro
+
+2. Upload everything from this package to the repo root.
+
+   Important:
+   - Include the hidden .github folder.
+   - The workflow file must end up here:
+
+     .github/workflows/build.yml
+
+3. Commit with this message:
+
+   Add v0.11.4 session summary package
+
+4. Go to Actions.
+
+5. Open the newest run.
+
+6. Download:
+
+   CassetteMotionPro-Windows-0.11.4
+
+What to test:
+
+1. Open Bike Fit Workspace.
+2. Open or create a fit session.
+3. Open the Bike Metrics tab.
+4. Leave at least one key Bike Metric blank.
+5. Click Package.
+6. Confirm the package folder name is easier to read.
+7. Confirm the package contains README - Open This First.txt.
+8. Confirm the package contains Session Summary.txt.
+9. Open Session Summary.txt.
+10. Confirm it lists client, bike, session/date/status, fit summary, key bike
+    metrics, body angles, notes, and package files.
+11. Confirm Bike Metrics Review.txt is still included.
+12. Click Zip.
+13. Confirm the zip also contains Session Summary.txt, README - Open This
+    First.txt, and Bike Metrics Review.txt.
+14. Open INSTALLER-BUILD-STATUS.txt from the Windows bundle.
+15. Confirm it says Installer build status: SUCCESS.
+16. Confirm the bundle contains CassetteMotionPro-Installer-0.11.4.exe.
+17. Run the installer on Windows.
+18. Confirm the app opens after install.
