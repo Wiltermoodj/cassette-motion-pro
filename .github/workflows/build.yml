@@ -81,6 +81,12 @@ jobs:
           if (!(Test-Path "src\Kinovea\app.config") -and (Test-Path "$upstreamSrc\Kinovea\app.config")) {
             Copy-Item "$upstreamSrc\Kinovea\app.config" "src\Kinovea\app.config" -Force
           }
+          robocopy "$upstreamSrc\Kinovea" "src\Kinovea" /E /XC /XN /XO /NFL /NDL /NJH /NJS /NP
+          $robocopyExitCode = $LASTEXITCODE
+          if ($robocopyExitCode -gt 7) {
+            throw "robocopy failed while restoring missing Kinovea app files with exit code $robocopyExitCode."
+          }
+          $global:LASTEXITCODE = 0
           Get-ChildItem src -Directory -Filter "Kinovea*" | Select-Object Name
 
       - name: Setup MSBuild
