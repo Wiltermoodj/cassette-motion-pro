@@ -1,0 +1,71 @@
+Cassette Motion Pro v0.12.0 - Professional Report Polish
+
+This update makes the generated bike fit report look more polished and
+professional while keeping the package and zip workflow the same.
+
+What changed:
+
+- Generated reports have a more professional cover/header.
+- Report section spacing is cleaner.
+- Fit Summary panels are visually stronger.
+- Bike Metrics and Body Angles tables have cleaner card-style styling.
+- Print / Save PDF styling is improved.
+- Keeps the v0.11.4 Session Summary.txt package workflow.
+- Keeps the v0.11.3 clean handoff package workflow.
+- Keeps the v0.11.2 Bike Metrics Review.txt package workflow.
+- Keeps the v0.11.1 detailed Review Metrics button.
+- Keeps the v0.10.9 handoff notes workflow.
+- Keeps the v0.10.8 Zip workflow.
+- Keeps the v0.10.7 report package folder workflow.
+- Keeps the v0.10.6 report preview workflow.
+- Keeps the v0.10.5 Fit Summary workflow.
+- Updates app/build/installer/report versions to 0.12.0.
+
+Upload steps:
+
+1. Open your GitHub repository:
+   https://github.com/spooled/cassette-motion-pro
+
+2. Upload everything from this package to the repo root.
+
+   Important:
+   - Include the hidden .github folder.
+   - The workflow file must end up here:
+
+     .github/workflows/build.yml
+
+3. Commit with this message:
+
+   Add v0.12.0 professional report polish
+
+4. Go to Actions.
+
+5. Open the newest run.
+
+6. Download:
+
+   CassetteMotionPro-Windows-0.12.0
+
+What to test:
+
+1. Open Bike Fit Workspace.
+2. Open or create a fit session.
+3. Open the Bike Metrics tab.
+4. Leave at least one key Bike Metric blank.
+5. Fill in a few Fit Summary and Bike Metrics fields.
+6. Add/select at least one report image if available.
+7. Click Preview Report or Generate Report.
+8. Confirm the report looks more polished: stronger header, cleaner sections,
+   nicer Fit Summary, and cleaner measurement tables.
+9. Use Print / Save PDF and confirm the layout still looks good.
+10. Click Package.
+11. Confirm Session Summary.txt, README - Open This First.txt, Bike Metrics
+    Review.txt, Client Handoff Notes.txt, Bike Fit Report.html, and Images are
+    still included.
+12. Click Zip.
+13. Confirm the zip still contains the same package files.
+14. Open INSTALLER-BUILD-STATUS.txt from the Windows bundle.
+15. Confirm it says Installer build status: SUCCESS.
+16. Confirm the bundle contains CassetteMotionPro-Installer-0.12.0.exe.
+17. Run the installer on Windows.
+18. Confirm the app opens after install.

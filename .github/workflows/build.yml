@@ -42,6 +42,21 @@ jobs:
         shell: cmd
         run: mkdir src\Kinovea\bin\x64\Release\AppData
 
+      - name: Create portable zip for Windows bundle
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist\windows
+          Compress-Archive -Path "src\Kinovea\bin\x64\Release\*" -DestinationPath "dist\windows\CassetteMotionPro-Portable-$env:VERSION.zip" -Force
+          @(
+            "Installer build status: NOT RUN"
+            "Version: $env:VERSION"
+            ""
+            "The portable zip was created."
+            "If this file was not replaced with SUCCESS or FAILED, the workflow stopped before the Build installer step."
+            "Open the GitHub Actions build log and check Install NSIS and Build installer."
+          ) | Set-Content "dist\windows\INSTALLER-BUILD-STATUS.txt"
+          Get-ChildItem dist\windows
+
       - name: Upload portable application
         uses: actions/upload-artifact@v6
         with:
@@ -53,16 +68,95 @@ jobs:
         run: rmdir src\Kinovea\bin\x64\Release\AppData
 
       - name: Install NSIS
-        uses: repolevedavaj/install-nsis@v1.2.0
-        with:
-          nsis-version: "3.11"
+        shell: pwsh
+        run: |
+          choco install nsis -y --no-progress
+          $nsisPath = Join-Path ${env:ProgramFiles(x86)} "NSIS\makensis.exe"
+          if (!(Test-Path $nsisPath)) {
+            $nsisPath = (Get-Command makensis.exe -ErrorAction SilentlyContinue).Source
+          }
+          if (!(Test-Path $nsisPath)) {
+            throw "makensis.exe was not found after installing NSIS."
+          }
+          "MAKENSIS_PATH=$nsisPath" | Out-File -FilePath $env:GITHUB_ENV -Append
+          & $nsisPath /VERSION
 
       - name: Build installer
-        shell: cmd
-        run: makensis src\Installer\kinovea.nsi
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist\installer
+          New-Item -ItemType Directory -Force dist\windows
+          try {
+            if ([string]::IsNullOrWhiteSpace($env:MAKENSIS_PATH) -or !(Test-Path $env:MAKENSIS_PATH)) {
+              throw "MAKENSIS_PATH is missing or invalid: $env:MAKENSIS_PATH"
+            }
+
+            Push-Location src\Installer
+            Write-Host "Installer source files:"
+            Get-ChildItem -Force | Select-Object Name, Length
+            & $env:MAKENSIS_PATH /DVERSION=$env:VERSION kinovea.nsi
+            $makensisExitCode = $LASTEXITCODE
+            Pop-Location
+
+            if ($makensisExitCode -ne 0) {
+              throw "makensis exited with code $makensisExitCode."
+            }
+
+            $installer = Get-ChildItem -Path . -Filter "CassetteMotionPro-$env:VERSION.exe" -File -Recurse | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+            if (-not $installer) {
+              $installer = Get-ChildItem -Path . -Filter "CassetteMotionPro-*.exe" -File -Recurse | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+            }
+
+            if (-not $installer) {
+              Write-Host "No installer found. Listing EXE files for debugging:"
+              Get-ChildItem -Path . -Filter "*.exe" -Recurse | Select-Object FullName
+              throw "Installer exe was not created."
+            }
+
+            Copy-Item $installer.FullName "dist\installer\CassetteMotionPro-Installer-$env:VERSION.exe" -Force
+            Copy-Item $installer.FullName "dist\windows\CassetteMotionPro-Installer-$env:VERSION.exe" -Force
+            @(
+              "Installer build status: SUCCESS"
+              "Version: $env:VERSION"
+              "NSIS: $env:MAKENSIS_PATH"
+              "Installer source: $($installer.FullName)"
+              "Installer artifact: CassetteMotionPro-Installer-$env:VERSION.exe"
+              "Windows bundle: CassetteMotionPro-Windows-$env:VERSION"
+            ) | Set-Content "dist\windows\INSTALLER-BUILD-STATUS.txt"
+            Get-ChildItem dist\installer
+            Get-ChildItem dist\windows
+          }
+          catch {
+            if ((Get-Location).Path -like "*\src\Installer") {
+              Pop-Location
+            }
+
+            @(
+              "Installer build status: FAILED"
+              "Version: $env:VERSION"
+              "NSIS: $env:MAKENSIS_PATH"
+              "Error: $($_.Exception.Message)"
+              ""
+              "The portable zip should still be in this Windows bundle."
+              "Open the GitHub Actions build log and search for: Build installer"
+            ) | Set-Content "dist\windows\INSTALLER-BUILD-STATUS.txt"
+            Write-Host "Installer build failed. EXE files found during diagnostics:"
+            Get-ChildItem -Path . -Filter "*.exe" -Recurse | Select-Object FullName
+            throw
+          }
 
       - name: Upload installer
+        if: success()
         uses: actions/upload-artifact@v6
         with:
           name: CassetteMotionPro-Installer-${{ env.VERSION }}
-          path: src/Installer/CassetteMotionPro-${{ env.VERSION }}.exe
+          path: dist/installer/*.exe
+          if-no-files-found: error
+
+      - name: Upload Windows bundle
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: CassetteMotionPro-Windows-${{ env.VERSION }}
+          path: dist/windows/*
+          if-no-files-found: error
