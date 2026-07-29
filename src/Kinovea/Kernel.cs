@@ -733,32 +733,10 @@ namespace Kinovea.Root
             {
                 bodyAngleActivationTimer.Stop();
                 bodyAngleActivationTimer.Dispose();
+                bodyAngleActivationTimer = null;
             }
 
-            int attempts = 0;
-            bodyAngleActivationTimer = new System.Windows.Forms.Timer();
-            bodyAngleActivationTimer.Interval = 150;
-            bodyAngleActivationTimer.Tick += delegate
-            {
-                attempts++;
-                if (screenManager.ActivateDrawingTool("Bikefit", target))
-                {
-                    bodyAngleActivationTimer.Stop();
-                    bodyAngleActivationTimer.Dispose();
-                    bodyAngleActivationTimer = null;
-                    statusLabel.Text = "Bike Fit Angles active: click the rider to place the guided overlay.";
-                }
-                else if (attempts >= 40)
-                {
-                    bodyAngleActivationTimer.Stop();
-                    bodyAngleActivationTimer.Dispose();
-                    bodyAngleActivationTimer = null;
-                    statusLabel.Text = "The Bike Fit Angles tool could not start. Reopen the fit workspace and try again.";
-                }
-            };
-
-            statusLabel.Text = "Loading video and preparing the Bike Fit Angles tool...";
-            bodyAngleActivationTimer.Start();
+            statusLabel.Text = "Video loaded. Choose the Bike Fit Angles drawing tool to place the guided overlay.";
         }
 
         private void QueueClientWorkspace(ClientRecord client)
