@@ -1,5 +1,0 @@
-GitHub Desktop upload test for Cassette Motion Pro.
-
-If this file appears on GitHub, pushing from the clean local repository works.
-
-After the test succeeds, this file can be removed in a follow-up cleanup commit.
