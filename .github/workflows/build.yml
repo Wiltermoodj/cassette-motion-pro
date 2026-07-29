@@ -102,22 +102,22 @@ jobs:
             msbuild $_.FullName /t:Restore /p:Platform="x64" /p:Configuration=Release
           }
 
-      - name: Remove native PlayerServer project from CI build
+      - name: Patch FFmpeg headers for CI compiler
         shell: pwsh
         run: |
-          $pattern = '(?s)\s*<ProjectReference Include="\.\.\\Kinovea\.Video\.FFMpeg\\PlayerServer\\PlayerServer\.vcxproj">.*?</ProjectReference>'
-          $removedCount = 0
-          Get-ChildItem src -Recurse -Filter *.csproj | ForEach-Object {
-            $content = Get-Content $_.FullName -Raw
-            $updated = [regex]::Replace($content, $pattern, "")
-            if ($updated -ne $content) {
-              Set-Content $_.FullName $updated
-              $removedCount++
-              Write-Host "Removed native PlayerServer project reference from $($_.FullName)."
-            }
-          }
-          if ($removedCount -eq 0) {
-            throw "Native PlayerServer project reference was not found in restored CI projects."
+          $commonHeader = "src\Refs\FFmpeg\include\libavutil\common.h"
+          $content = Get-Content $commonHeader -Raw
+          if ($content -notmatch "#ifndef UINT64_C") {
+            $patch = @"
+
+#ifndef UINT64_C
+#define UINT64_C(value) value##ULL
+#endif
+
+"@
+            $content = $content -replace "(/\*\s*\* @file\s*\* common internal and external API header\s*\*/)", "`$1$patch"
+            Set-Content $commonHeader $content
+            Write-Host "Patched FFmpeg common.h with UINT64_C compatibility macro."
           }
 
       - name: Build solution
