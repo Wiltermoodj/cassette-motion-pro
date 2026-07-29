@@ -61,7 +61,12 @@ jobs:
           if (!(Test-Path "$upstreamSrc\Kinovea")) {
             throw "Could not find upstream Kinovea project folder under $upstreamSrc."
           }
-          Get-ChildItem $upstreamSrc -Directory -Filter "Kinovea.*" | ForEach-Object {
+          $projectFolders = @(Get-ChildItem $upstreamSrc -Directory -Filter "Kinovea.*")
+          $expTreeLib = Get-Item "$upstreamSrc\ExpTreeLib" -ErrorAction SilentlyContinue
+          if ($expTreeLib) {
+            $projectFolders += $expTreeLib
+          }
+          $projectFolders | ForEach-Object {
             $target = Join-Path "src" $_.Name
             if (!(Test-Path $target)) {
               Write-Host "Restoring upstream project folder $($_.Name)"
