@@ -36,7 +36,11 @@ jobs:
         shell: pwsh
         run: |
           git clone --depth 1 https://github.com/Kinovea/Kinovea.git "$env:RUNNER_TEMP\kinovea-upstream"
-          Copy-Item "$env:RUNNER_TEMP\kinovea-upstream\Refs\*" "src\Refs" -Recurse -Force
+          if (Test-Path "src\Refs" -PathType Leaf) {
+            Remove-Item "src\Refs" -Force
+          }
+          New-Item -ItemType Directory -Force "src\Refs"
+          Copy-Item "$env:RUNNER_TEMP\kinovea-upstream\Refs\*" "src\Refs\" -Recurse -Force
 
       - name: Setup MSBuild
         uses: microsoft/setup-msbuild@v2
