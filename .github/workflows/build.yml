@@ -50,6 +50,27 @@ jobs:
           $global:LASTEXITCODE = 0
           Get-ChildItem $refsTarget | Select-Object Name, Length
 
+      - name: Restore upstream project dependencies
+        shell: pwsh
+        run: |
+          $upstreamSrc = "$env:RUNNER_TEMP\kinovea-upstream\src"
+          Get-ChildItem $upstreamSrc -Directory -Filter "Kinovea.*" | ForEach-Object {
+            $target = Join-Path "src" $_.Name
+            if (!(Test-Path $target)) {
+              Write-Host "Restoring upstream project folder $($_.Name)"
+              robocopy $_.FullName $target /E /NFL /NDL /NJH /NJS /NP
+              $robocopyExitCode = $LASTEXITCODE
+              if ($robocopyExitCode -gt 7) {
+                throw "robocopy failed while restoring $($_.Name) with exit code $robocopyExitCode."
+              }
+              $global:LASTEXITCODE = 0
+            }
+          }
+          if (!(Test-Path "src\Kinovea\app.config") -and (Test-Path "$upstreamSrc\Kinovea\app.config")) {
+            Copy-Item "$upstreamSrc\Kinovea\app.config" "src\Kinovea\app.config" -Force
+          }
+          Get-ChildItem src -Directory -Filter "Kinovea*" | Select-Object Name
+
       - name: Setup MSBuild
         uses: microsoft/setup-msbuild@v2
 
