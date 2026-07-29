@@ -228,8 +228,13 @@ jobs:
             if ($sourceMachine -ne "x64") {
               throw "$($plugin.Dll) was expected to be x64, but was $sourceMachine at $($plugin.Source)"
             }
-            Copy-Item $plugin.Source $output -Force
-            Write-Host "Staged fresh x64 assembly: $($plugin.Dll)"
+            $destination = Join-Path $output $plugin.Dll
+            if ([System.IO.Path]::GetFullPath($plugin.Source) -ieq [System.IO.Path]::GetFullPath($destination)) {
+              Write-Host "$($plugin.Dll) is already in the package output folder."
+            } else {
+              Copy-Item $plugin.Source $output -Force
+              Write-Host "Staged fresh x64 assembly: $($plugin.Dll)"
+            }
           }
 
           $exe = Join-Path $output "CassetteMotionPro.exe"
