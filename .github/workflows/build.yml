@@ -132,41 +132,6 @@ jobs:
             throw "Expected x64 output folder was not found: $output"
           }
 
-          $videoProject = "src\Kinovea.Video\Kinovea.Video.csproj"
-          if (!(Test-Path $videoProject)) {
-            throw "Kinovea.Video project was not restored: $videoProject"
-          }
-
-          $ffmpegProject = "src\Kinovea.Video.FFMpeg\PlayerServer\PlayerServer.vcxproj"
-          if (!(Test-Path $ffmpegProject)) {
-            throw "Kinovea.Video.FFMpeg project was not restored: $ffmpegProject"
-          }
-
-          $directShowProject = "src\Kinovea.Camera.DirectShow\Kinovea.Camera.DirectShow.csproj"
-          if (!(Test-Path $directShowProject)) {
-            throw "Kinovea.Camera.DirectShow project was not restored: $directShowProject"
-          }
-
-          Remove-Item (Join-Path $output "Kinovea.Video.dll") -Force -ErrorAction SilentlyContinue
-          Remove-Item (Join-Path $output "Kinovea.Video.FFMpeg.dll") -Force -ErrorAction SilentlyContinue
-          Remove-Item (Join-Path $output "Kinovea.Camera.DirectShow.dll") -Force -ErrorAction SilentlyContinue
-          Remove-Item "src\Kinovea.Video.FFMpeg\bin\Kinovea.Video.FFMpeg.dll" -Force -ErrorAction SilentlyContinue
-
-          msbuild $videoProject /p:Platform="x64" /p:Configuration=Release /p:AllowUnsafeBlocks=true
-          if ($LASTEXITCODE -ne 0) {
-            throw "Kinovea.Video x64 rebuild failed with exit code $LASTEXITCODE."
-          }
-
-          msbuild $ffmpegProject /p:Platform="x64" /p:Configuration=Release /p:AllowUnsafeBlocks=true
-          if ($LASTEXITCODE -ne 0) {
-            throw "Kinovea.Video.FFMpeg x64 rebuild failed with exit code $LASTEXITCODE."
-          }
-
-          msbuild $directShowProject /p:Platform="x64" /p:Configuration=Release /p:AllowUnsafeBlocks=true
-          if ($LASTEXITCODE -ne 0) {
-            throw "Kinovea.Camera.DirectShow x64 rebuild failed with exit code $LASTEXITCODE."
-          }
-
           function Get-PeMachine($path) {
             $bytes = [System.IO.File]::ReadAllBytes($path)
             $peOffset = [BitConverter]::ToInt32($bytes, 0x3C)
@@ -179,81 +144,115 @@ jobs:
             }
           }
 
-          $videoProjects = @(
-            "Kinovea.Video",
-            "Kinovea.Video.Bitmap",
-            "Kinovea.Video.GIF",
-            "Kinovea.Video.SVG",
-            "Kinovea.Video.Synthetic"
+          $startupPlugins = @(
+            @{
+              Name = "Kinovea.Camera"
+              Project = "src\Kinovea.Camera\Kinovea.Camera.csproj"
+              Source = "src\Kinovea.Camera\bin\x64\Release\Kinovea.Camera.dll"
+              Dll = "Kinovea.Camera.dll"
+            },
+            @{
+              Name = "Kinovea.Camera.DirectShow"
+              Project = "src\Kinovea.Camera.DirectShow\Kinovea.Camera.DirectShow.csproj"
+              Source = "src\Kinovea\bin\x64\Release\Kinovea.Camera.DirectShow.dll"
+              Dll = "Kinovea.Camera.DirectShow.dll"
+            },
+            @{
+              Name = "Kinovea.Camera.FrameGenerator"
+              Project = "src\Kinovea.Camera.FrameGenerator\Kinovea.Camera.FrameGenerator.csproj"
+              Source = "src\Kinovea\bin\x64\Release\Kinovea.Camera.FrameGenerator.dll"
+              Dll = "Kinovea.Camera.FrameGenerator.dll"
+            },
+            @{
+              Name = "Kinovea.Camera.HTTP"
+              Project = "src\Kinovea.Camera.HTTP\Kinovea.Camera.HTTP.csproj"
+              Source = "src\Kinovea\bin\x64\Release\Kinovea.Camera.HTTP.dll"
+              Dll = "Kinovea.Camera.HTTP.dll"
+            },
+            @{
+              Name = "Kinovea.Video"
+              Project = "src\Kinovea.Video\Kinovea.Video.csproj"
+              Source = "src\Kinovea.Video\bin\x64\Release\Kinovea.Video.dll"
+              Dll = "Kinovea.Video.dll"
+            },
+            @{
+              Name = "Kinovea.Video.Bitmap"
+              Project = "src\Kinovea.Video.Bitmap\Kinovea.Video.Bitmap.csproj"
+              Source = "src\Kinovea\bin\x64\Release\Kinovea.Video.Bitmap.dll"
+              Dll = "Kinovea.Video.Bitmap.dll"
+            },
+            @{
+              Name = "Kinovea.Video.GIF"
+              Project = "src\Kinovea.Video.GIF\Kinovea.Video.GIF.csproj"
+              Source = "src\Kinovea\bin\x64\Release\Kinovea.Video.GIF.dll"
+              Dll = "Kinovea.Video.GIF.dll"
+            },
+            @{
+              Name = "Kinovea.Video.SVG"
+              Project = "src\Kinovea.Video.SVG\Kinovea.Video.SVG.csproj"
+              Source = "src\Kinovea\bin\x64\Release\Kinovea.Video.SVG.dll"
+              Dll = "Kinovea.Video.SVG.dll"
+            },
+            @{
+              Name = "Kinovea.Video.Synthetic"
+              Project = "src\Kinovea.Video.Synthetic\Kinovea.Video.Synthetic.csproj"
+              Source = "src\Kinovea\bin\x64\Release\Kinovea.Video.Synthetic.dll"
+              Dll = "Kinovea.Video.Synthetic.dll"
+            },
+            @{
+              Name = "Kinovea.Video.FFMpeg"
+              Project = "src\Kinovea.Video.FFMpeg\PlayerServer\PlayerServer.vcxproj"
+              Source = "src\Kinovea.Video.FFMpeg\bin\Kinovea.Video.FFMpeg.dll"
+              Dll = "Kinovea.Video.FFMpeg.dll"
+            }
           )
 
-          foreach ($project in $videoProjects) {
-            $dll = "src\$project\bin\x64\Release\$project.dll"
-            if ($project -eq "Kinovea.Video" -and !(Test-Path $dll)) {
-              throw "Fresh x64 Kinovea.Video.dll was not created at $dll"
+          foreach ($plugin in $startupPlugins) {
+            if (!(Test-Path $plugin.Project)) {
+              throw "$($plugin.Name) project was not restored: $($plugin.Project)"
             }
-            if (Test-Path $dll) {
-              $sourceMachine = Get-PeMachine $dll
-              Write-Host "$project.dll source machine: $sourceMachine"
-              if ($sourceMachine -ne "x64") {
-                throw "$project.dll was expected to be x64, but was $sourceMachine at $dll"
-              }
-              Copy-Item $dll $output -Force
-              Write-Host "Staged fresh x64 assembly: $project.dll"
+
+            Remove-Item (Join-Path $output $plugin.Dll) -Force -ErrorAction SilentlyContinue
+            Remove-Item $plugin.Source -Force -ErrorAction SilentlyContinue
+
+            msbuild $plugin.Project /p:Platform="x64" /p:Configuration=Release /p:AllowUnsafeBlocks=true
+            if ($LASTEXITCODE -ne 0) {
+              throw "$($plugin.Name) x64 rebuild failed with exit code $LASTEXITCODE."
             }
-          }
 
-          $ffmpegDll = "src\Kinovea.Video.FFMpeg\bin\Kinovea.Video.FFMpeg.dll"
-          if (!(Test-Path $ffmpegDll)) {
-            throw "Fresh x64 Kinovea.Video.FFMpeg.dll was not created at $ffmpegDll"
-          }
-          $ffmpegMachine = Get-PeMachine $ffmpegDll
-          Write-Host "Kinovea.Video.FFMpeg.dll source machine: $ffmpegMachine"
-          if ($ffmpegMachine -ne "x64") {
-            throw "Kinovea.Video.FFMpeg.dll was expected to be x64, but was $ffmpegMachine at $ffmpegDll"
-          }
-          Copy-Item $ffmpegDll $output -Force
-          Write-Host "Staged fresh x64 assembly: Kinovea.Video.FFMpeg.dll"
-
-          $directShowDll = "src\Kinovea\bin\x64\Release\Kinovea.Camera.DirectShow.dll"
-          if (!(Test-Path $directShowDll)) {
-            throw "Fresh x64 Kinovea.Camera.DirectShow.dll was not created at $directShowDll"
-          }
-          $directShowMachine = Get-PeMachine $directShowDll
-          Write-Host "Kinovea.Camera.DirectShow.dll source machine: $directShowMachine"
-          if ($directShowMachine -ne "x64") {
-            throw "Kinovea.Camera.DirectShow.dll was expected to be x64, but was $directShowMachine at $directShowDll"
+            if (!(Test-Path $plugin.Source)) {
+              throw "Fresh x64 $($plugin.Dll) was not created at $($plugin.Source)"
+            }
+            $sourceMachine = Get-PeMachine $plugin.Source
+            Write-Host "$($plugin.Dll) source machine: $sourceMachine"
+            if ($sourceMachine -ne "x64") {
+              throw "$($plugin.Dll) was expected to be x64, but was $sourceMachine at $($plugin.Source)"
+            }
+            Copy-Item $plugin.Source $output -Force
+            Write-Host "Staged fresh x64 assembly: $($plugin.Dll)"
           }
 
           $exe = Join-Path $output "CassetteMotionPro.exe"
-          $video = Join-Path $output "Kinovea.Video.dll"
-          $ffmpeg = Join-Path $output "Kinovea.Video.FFMpeg.dll"
-          $directShow = Join-Path $output "Kinovea.Camera.DirectShow.dll"
           if (!(Test-Path $exe)) {
             throw "CassetteMotionPro.exe was not found in $output"
           }
-          if (!(Test-Path $video)) {
-            throw "Kinovea.Video.dll was not found in $output"
-          }
-          if (!(Test-Path $ffmpeg)) {
-            throw "Kinovea.Video.FFMpeg.dll was not found in $output"
-          }
-          if (!(Test-Path $directShow)) {
-            throw "Kinovea.Camera.DirectShow.dll was not found in $output"
-          }
-
           $exeMachine = Get-PeMachine $exe
-          $videoMachine = Get-PeMachine $video
-          $ffmpegMachine = Get-PeMachine $ffmpeg
-          $directShowMachine = Get-PeMachine $directShow
           Write-Host "CassetteMotionPro.exe machine: $exeMachine"
-          Write-Host "Kinovea.Video.dll machine: $videoMachine"
-          Write-Host "Kinovea.Video.FFMpeg.dll machine: $ffmpegMachine"
-          Write-Host "Kinovea.Camera.DirectShow.dll machine: $directShowMachine"
+          if ($exeMachine -ne "x64") {
+            throw "CassetteMotionPro.exe was expected to be x64, but was $exeMachine."
+          }
 
-          if ($exeMachine -ne "x64" -or $videoMachine -ne "x64" -or $ffmpegMachine -ne "x64" -or $directShowMachine -ne "x64") {
-            Get-ChildItem "src" -Recurse -Include "Kinovea.Video*.dll","Kinovea.Camera.DirectShow.dll" | Select-Object FullName, Length
-            throw "Architecture mismatch detected. Expected x64 EXE, x64 video DLLs, and x64 DirectShow camera DLL, got EXE=$exeMachine VIDEO=$videoMachine FFMPEG=$ffmpegMachine DIRECTSHOW=$directShowMachine."
+          foreach ($plugin in $startupPlugins) {
+            $packagedDll = Join-Path $output $plugin.Dll
+            if (!(Test-Path $packagedDll)) {
+              throw "$($plugin.Dll) was not found in $output"
+            }
+            $packagedMachine = Get-PeMachine $packagedDll
+            Write-Host "$($plugin.Dll) packaged machine: $packagedMachine"
+            if ($packagedMachine -ne "x64") {
+              Get-ChildItem "src" -Recurse -Include "Kinovea.Video*.dll","Kinovea.Camera*.dll" | Select-Object FullName, Length
+              throw "Architecture mismatch detected. Expected x64 $($plugin.Dll), got $packagedMachine at $packagedDll."
+            }
           }
 
       - name: Create portable settings folder
