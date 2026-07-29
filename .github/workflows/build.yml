@@ -36,11 +36,18 @@ jobs:
         shell: pwsh
         run: |
           git clone --depth 1 https://github.com/Kinovea/Kinovea.git "$env:RUNNER_TEMP\kinovea-upstream"
+          $refsSource = "$env:RUNNER_TEMP\kinovea-upstream\Refs"
+          $refsTarget = "src\Refs"
           if (Test-Path "src\Refs" -PathType Leaf) {
             Remove-Item "src\Refs" -Force
           }
-          New-Item -ItemType Directory -Force "src\Refs"
-          Copy-Item "$env:RUNNER_TEMP\kinovea-upstream\Refs\*" "src\Refs\" -Recurse -Force
+          New-Item -ItemType Directory -Force $refsTarget | Out-Null
+          robocopy $refsSource $refsTarget /E /NFL /NDL /NJH /NJS /NP
+          $robocopyExitCode = $LASTEXITCODE
+          if ($robocopyExitCode -gt 7) {
+            throw "robocopy failed with exit code $robocopyExitCode."
+          }
+          Get-ChildItem $refsTarget | Select-Object Name, Length
 
       - name: Setup MSBuild
         uses: microsoft/setup-msbuild@v2
