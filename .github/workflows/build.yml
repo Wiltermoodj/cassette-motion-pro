@@ -108,13 +108,13 @@ jobs:
           $commonHeader = "src\Refs\FFmpeg\include\libavutil\common.h"
           $content = Get-Content $commonHeader -Raw
           if ($content -notmatch "#ifndef UINT64_C") {
-            $patch = @"
-
-#ifndef UINT64_C
-#define UINT64_C(value) value##ULL
-#endif
-
-"@
+            $patch = [string]::Join([Environment]::NewLine, @(
+              "",
+              "#ifndef UINT64_C",
+              "#define UINT64_C(value) value##ULL",
+              "#endif",
+              ""
+            ))
             $content = $content -replace "(/\*\s*\* @file\s*\* common internal and external API header\s*\*/)", "`$1$patch"
             Set-Content $commonHeader $content
             Write-Host "Patched FFmpeg common.h with UINT64_C compatibility macro."
