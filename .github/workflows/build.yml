@@ -142,8 +142,14 @@ jobs:
             throw "Kinovea.Video.FFMpeg project was not restored: $ffmpegProject"
           }
 
+          $directShowProject = "src\Kinovea.Camera.DirectShow\Kinovea.Camera.DirectShow.csproj"
+          if (!(Test-Path $directShowProject)) {
+            throw "Kinovea.Camera.DirectShow project was not restored: $directShowProject"
+          }
+
           Remove-Item (Join-Path $output "Kinovea.Video.dll") -Force -ErrorAction SilentlyContinue
           Remove-Item (Join-Path $output "Kinovea.Video.FFMpeg.dll") -Force -ErrorAction SilentlyContinue
+          Remove-Item (Join-Path $output "Kinovea.Camera.DirectShow.dll") -Force -ErrorAction SilentlyContinue
           Remove-Item "src\Kinovea.Video.FFMpeg\bin\Kinovea.Video.FFMpeg.dll" -Force -ErrorAction SilentlyContinue
 
           msbuild $videoProject /p:Platform="x64" /p:Configuration=Release /p:AllowUnsafeBlocks=true
@@ -154,6 +160,11 @@ jobs:
           msbuild $ffmpegProject /p:Platform="x64" /p:Configuration=Release /p:AllowUnsafeBlocks=true
           if ($LASTEXITCODE -ne 0) {
             throw "Kinovea.Video.FFMpeg x64 rebuild failed with exit code $LASTEXITCODE."
+          }
+
+          msbuild $directShowProject /p:Platform="x64" /p:Configuration=Release /p:AllowUnsafeBlocks=true
+          if ($LASTEXITCODE -ne 0) {
+            throw "Kinovea.Camera.DirectShow x64 rebuild failed with exit code $LASTEXITCODE."
           }
 
           function Get-PeMachine($path) {
@@ -204,9 +215,20 @@ jobs:
           Copy-Item $ffmpegDll $output -Force
           Write-Host "Staged fresh x64 assembly: Kinovea.Video.FFMpeg.dll"
 
+          $directShowDll = "src\Kinovea\bin\x64\Release\Kinovea.Camera.DirectShow.dll"
+          if (!(Test-Path $directShowDll)) {
+            throw "Fresh x64 Kinovea.Camera.DirectShow.dll was not created at $directShowDll"
+          }
+          $directShowMachine = Get-PeMachine $directShowDll
+          Write-Host "Kinovea.Camera.DirectShow.dll source machine: $directShowMachine"
+          if ($directShowMachine -ne "x64") {
+            throw "Kinovea.Camera.DirectShow.dll was expected to be x64, but was $directShowMachine at $directShowDll"
+          }
+
           $exe = Join-Path $output "CassetteMotionPro.exe"
           $video = Join-Path $output "Kinovea.Video.dll"
           $ffmpeg = Join-Path $output "Kinovea.Video.FFMpeg.dll"
+          $directShow = Join-Path $output "Kinovea.Camera.DirectShow.dll"
           if (!(Test-Path $exe)) {
             throw "CassetteMotionPro.exe was not found in $output"
           }
@@ -216,17 +238,22 @@ jobs:
           if (!(Test-Path $ffmpeg)) {
             throw "Kinovea.Video.FFMpeg.dll was not found in $output"
           }
+          if (!(Test-Path $directShow)) {
+            throw "Kinovea.Camera.DirectShow.dll was not found in $output"
+          }
 
           $exeMachine = Get-PeMachine $exe
           $videoMachine = Get-PeMachine $video
           $ffmpegMachine = Get-PeMachine $ffmpeg
+          $directShowMachine = Get-PeMachine $directShow
           Write-Host "CassetteMotionPro.exe machine: $exeMachine"
           Write-Host "Kinovea.Video.dll machine: $videoMachine"
           Write-Host "Kinovea.Video.FFMpeg.dll machine: $ffmpegMachine"
+          Write-Host "Kinovea.Camera.DirectShow.dll machine: $directShowMachine"
 
-          if ($exeMachine -ne "x64" -or $videoMachine -ne "x64" -or $ffmpegMachine -ne "x64") {
-            Get-ChildItem "src" -Recurse -Filter "Kinovea.Video*.dll" | Select-Object FullName, Length
-            throw "Architecture mismatch detected. Expected x64 EXE, x64 Kinovea.Video.dll, and x64 Kinovea.Video.FFMpeg.dll, got EXE=$exeMachine VIDEO=$videoMachine FFMPEG=$ffmpegMachine."
+          if ($exeMachine -ne "x64" -or $videoMachine -ne "x64" -or $ffmpegMachine -ne "x64" -or $directShowMachine -ne "x64") {
+            Get-ChildItem "src" -Recurse -Include "Kinovea.Video*.dll","Kinovea.Camera.DirectShow.dll" | Select-Object FullName, Length
+            throw "Architecture mismatch detected. Expected x64 EXE, x64 video DLLs, and x64 DirectShow camera DLL, got EXE=$exeMachine VIDEO=$videoMachine FFMPEG=$ffmpegMachine DIRECTSHOW=$directShowMachine."
           }
 
       - name: Create portable settings folder
