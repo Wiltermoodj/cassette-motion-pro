@@ -89,6 +89,33 @@ jobs:
           $global:LASTEXITCODE = 0
           Get-ChildItem src -Directory -Filter "Kinovea*" | Select-Object Name
 
+      - name: Add x86 build settings for ExpTreeLib
+        shell: pwsh
+        run: |
+          $expTreeLibProject = "src\ExpTreeLib\ExpTreeLib.vbproj"
+          if (!(Test-Path $expTreeLibProject)) {
+            throw "ExpTreeLib project was not restored: $expTreeLibProject"
+          }
+
+          $content = Get-Content $expTreeLibProject -Raw
+          if ($content -notmatch "Release\|x86") {
+            $x86PropertyGroups = @'
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x86'">
+    <OutputPath>bin\x86\Debug\</OutputPath>
+    <PlatformTarget>x86</PlatformTarget>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x86'">
+    <OutputPath>bin\x86\Release\</OutputPath>
+    <PlatformTarget>x86</PlatformTarget>
+  </PropertyGroup>
+'@
+            $content = $content -replace "</Project>", "$x86PropertyGroups`r`n</Project>"
+            Set-Content $expTreeLibProject $content
+            Write-Host "Added x86 build settings to ExpTreeLib."
+          } else {
+            Write-Host "ExpTreeLib already has x86 build settings."
+          }
+
       - name: Setup MSBuild
         uses: microsoft/setup-msbuild@v2
 
