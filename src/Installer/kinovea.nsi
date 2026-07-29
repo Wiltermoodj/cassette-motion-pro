@@ -8,7 +8,7 @@
 !ifndef VERSION
 !define VERSION "0.12.3"
 !endif
-!define BUILDDIR "..\Kinovea\Bin\x64\Release"
+!define BUILDDIR "..\Kinovea\Bin\x86\Release"
     
 ;--------------------------------
 ;General

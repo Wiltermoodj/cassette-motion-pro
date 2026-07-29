@@ -32,7 +32,7 @@
     <Copy SourceFiles="..\Refs\Microsoft\$(Platform)\vcruntime140.dll" DestinationFolder="$(TargetDir)"/>
 
     <Copy SourceFiles="..\Refs\TurboJpeg\$(Platform)\turbojpeg.dll" DestinationFolder="$(TargetDir)"/>
-    <Copy SourceFiles="..\packages\OpenCvSharp4.runtime.win.4.10.0.20240616\runtimes\win-x64\native\OpenCvSharpExtern.dll" DestinationFolder="$(TargetDir)" Condition="Exists('..\packages\OpenCvSharp4.runtime.win.4.10.0.20240616\runtimes\win-x64\native\OpenCvSharpExtern.dll')"/>
+    <Copy SourceFiles="..\packages\OpenCvSharp4.runtime.win.4.10.0.20240616\runtimes\win-$(Platform)\native\OpenCvSharpExtern.dll" DestinationFolder="$(TargetDir)" Condition="Exists('..\packages\OpenCvSharp4.runtime.win.4.10.0.20240616\runtimes\win-$(Platform)\native\OpenCvSharpExtern.dll')"/>
   </Target>
 
   <ItemGroup>
