@@ -98,23 +98,19 @@ jobs:
           }
 
           $content = Get-Content $expTreeLibProject -Raw
-          if ($content -notmatch "Release\|x86") {
-            $x86PropertyGroups = @(
-              '  <PropertyGroup Condition="''$(Configuration)|$(Platform)'' == ''Debug|x86''">'
-              '    <OutputPath>bin\x86\Debug\</OutputPath>'
-              '    <PlatformTarget>x86</PlatformTarget>'
-              '  </PropertyGroup>'
-              '  <PropertyGroup Condition="''$(Configuration)|$(Platform)'' == ''Release|x86''">'
-              '    <OutputPath>bin\x86\Release\</OutputPath>'
-              '    <PlatformTarget>x86</PlatformTarget>'
-              '  </PropertyGroup>'
-            ) -join "`r`n"
-            $content = $content -replace "</Project>", "$x86PropertyGroups`r`n</Project>"
-            Set-Content $expTreeLibProject $content
-            Write-Host "Added x86 build settings to ExpTreeLib."
-          } else {
-            Write-Host "ExpTreeLib already has x86 build settings."
-          }
+          $x86PropertyGroups = @(
+            '  <PropertyGroup Condition="''$(Configuration)|$(Platform)'' == ''Debug|x86''">'
+            '    <OutputPath>bin\x86\Debug\</OutputPath>'
+            '    <PlatformTarget>x86</PlatformTarget>'
+            '  </PropertyGroup>'
+            '  <PropertyGroup Condition="''$(Configuration)|$(Platform)'' == ''Release|x86''">'
+            '    <OutputPath>bin\x86\Release\</OutputPath>'
+            '    <PlatformTarget>x86</PlatformTarget>'
+            '  </PropertyGroup>'
+          ) -join "`r`n"
+          $content = $content -replace "</Project>", "$x86PropertyGroups`r`n</Project>"
+          Set-Content $expTreeLibProject $content
+          Write-Host "Forced x86 build settings into ExpTreeLib."
 
       - name: Setup MSBuild
         uses: microsoft/setup-msbuild@v2
@@ -149,7 +145,7 @@ jobs:
           }
 
       - name: Build solution
-        run: msbuild src/CassetteMotionPro.sln /p:Platform="x86" /p:Configuration=Release /p:AllowedReferenceRelatedFileExtensions=none /p:AllowUnsafeBlocks=true
+        run: msbuild src/CassetteMotionPro.sln /p:Platform="x86" /p:Configuration=Release /p:OutputPath="bin\x86\Release\\" /p:AllowedReferenceRelatedFileExtensions=none /p:AllowUnsafeBlocks=true
 
       - name: Verify and stage x86 video assemblies
         shell: pwsh
