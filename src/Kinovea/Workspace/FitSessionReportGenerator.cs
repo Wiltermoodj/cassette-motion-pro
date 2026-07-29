@@ -19,9 +19,12 @@ namespace CassetteMotionPro.Workspace
 {
     public static class FitSessionReportGenerator
     {
-        private const string PreparedByName = "Cassette Fit Studio";
+        private const string StudioName = "Cassette Fit Studio";
+        private const string FitterName = "Add fitter name";
+        private const string StudioPhone = "Add phone";
+        private const string StudioEmail = "Add email";
+        private const string StudioWebsite = "Add website";
         private const string PreparedByRole = "Professional Bike Fitting";
-        private const string StudioContact = "Studio contact: add phone / email / website";
         private const string ConfidentialNotice = "Confidential bike fit report prepared for the named client.";
 
         public static string Generate(ClientRecord client, FitSessionRecord session)
@@ -102,7 +105,7 @@ namespace CassetteMotionPro.Workspace
             text.AppendLine("Bike: " + ValueOrPlaceholder(client.BikeDescription));
             text.AppendLine("Session: " + ValueOrPlaceholder(session.DisplayName));
             text.AppendLine("Date: " + (session.SessionDate == DateTime.MinValue ? DateTime.Today.ToString("MMM d, yyyy") : session.SessionDate.ToString("MMM d, yyyy")));
-            text.AppendLine("Prepared by: " + PreparedByName + " - " + PreparedByRole);
+            AddStudioContactText(text);
             text.AppendLine();
             text.AppendLine("Start here");
             text.AppendLine("----------");
@@ -135,7 +138,7 @@ namespace CassetteMotionPro.Workspace
             text.AppendLine("Bike: " + ValueOrPlaceholder(client.BikeDescription));
             text.AppendLine("Session: " + ValueOrPlaceholder(session.DisplayName));
             text.AppendLine("Date: " + (session.SessionDate == DateTime.MinValue ? DateTime.Today.ToString("MMM d, yyyy") : session.SessionDate.ToString("MMM d, yyyy")));
-            text.AppendLine("Prepared by: " + PreparedByName + " - " + PreparedByRole);
+            AddStudioContactText(text);
             text.AppendLine("Status: " + ValueOrPlaceholder(session.Status));
             text.AppendLine("Report view: " + (session.HideBeforeMeasurementsInReport ? "Final fit only" : "Before / After"));
             text.AppendLine();
@@ -341,6 +344,31 @@ namespace CassetteMotionPro.Workspace
             text.AppendLine();
         }
 
+        private static void AddStudioContactText(StringBuilder text)
+        {
+            text.AppendLine("Prepared by: " + StudioName);
+            text.AppendLine("Role: " + PreparedByRole);
+            text.AppendLine("Fitter: " + FitterName);
+            text.AppendLine("Phone: " + StudioPhone);
+            text.AppendLine("Email: " + StudioEmail);
+            text.AppendLine("Website: " + StudioWebsite);
+        }
+
+        private static void AddStudioContactGrid(StringBuilder html)
+        {
+            html.AppendLine("<div class=\"contact-grid\">");
+            AddStudioContactGridRow(html, "Fitter", FitterName);
+            AddStudioContactGridRow(html, "Phone", StudioPhone);
+            AddStudioContactGridRow(html, "Email", StudioEmail);
+            AddStudioContactGridRow(html, "Website", StudioWebsite);
+            html.AppendLine("</div>");
+        }
+
+        private static void AddStudioContactGridRow(StringBuilder html, string label, string value)
+        {
+            html.AppendLine("<div class=\"contact-label\">" + Encode(label) + "</div><div>" + Encode(value) + "</div>");
+        }
+
         private static void AddSummaryMetric(StringBuilder text, string label, string before, string after, bool includeBefore)
         {
             if (includeBefore)
@@ -491,10 +519,12 @@ namespace CassetteMotionPro.Workspace
             html.AppendLine(".hero-card{background:rgba(255,255,255,.085);border:1px solid rgba(255,255,255,.16);border-radius:17px;padding:15px 16px;box-shadow:inset 0 1px 0 rgba(255,255,255,.06);}");
             html.AppendLine(".hero-card .label{color:var(--brand);font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.12em;}");
             html.AppendLine(".hero-card .value{font-size:15px;font-weight:800;margin-top:6px;line-height:1.25;}");
-            html.AppendLine(".prepared-card{margin-top:18px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);border-radius:18px;padding:15px 16px;display:flex;justify-content:space-between;gap:18px;align-items:flex-start;}");
+            html.AppendLine(".prepared-card{margin-top:18px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);border-radius:18px;padding:15px 16px;display:grid;grid-template-columns:1fr 1.2fr;gap:18px;align-items:start;}");
             html.AppendLine(".prepared-card .label{color:var(--brand);font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.12em;margin-bottom:4px;}");
             html.AppendLine(".prepared-card .value{font-size:14px;font-weight:800;line-height:1.35;}");
             html.AppendLine(".prepared-card .contact{text-align:right;color:#c4cec8;font-size:13px;line-height:1.45;}");
+            html.AppendLine(".contact-grid{display:grid;grid-template-columns:auto 1fr;gap:3px 10px;}");
+            html.AppendLine(".contact-grid .contact-label{font-weight:900;color:var(--brand);text-transform:uppercase;font-size:10px;letter-spacing:.1em;}");
             html.AppendLine(".review-strip{background:#f4ffe8;border-bottom:1px solid #d2e6b6;color:#24302b;padding:17px 50px;}");
             html.AppendLine(".review-title{font-weight:900;font-size:12px;text-transform:uppercase;letter-spacing:.13em;margin-bottom:9px;}");
             html.AppendLine(".review-list{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:0;padding:0;list-style:none;font-size:13px;}");
@@ -526,7 +556,7 @@ namespace CassetteMotionPro.Workspace
             html.AppendLine(".positive{color:#2b7c46;}.negative{color:#9b3b32;}");
             html.AppendLine(".section-kicker{color:#6d7c75;font-size:13px;margin-top:-4px;margin-bottom:13px;max-width:760px;}");
             html.AppendLine(".section-card{background:white;border:1px solid #e6ece8;border-radius:22px;padding:22px;margin-top:16px;box-shadow:0 10px 26px rgba(31,45,38,.045);}");
-            html.AppendLine(".prepared-footer{margin-top:38px;border-top:1px solid #e5ebe7;padding-top:20px;display:grid;grid-template-columns:1.4fr 1fr;gap:22px;color:#4f5f58;}");
+            html.AppendLine(".prepared-footer{margin-top:38px;border-top:1px solid #e5ebe7;padding-top:20px;display:grid;grid-template-columns:1.2fr 1.2fr;gap:22px;color:#4f5f58;}");
             html.AppendLine(".prepared-footer .label{font-weight:900;font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:#51615a;margin-bottom:6px;}");
             html.AppendLine(".prepared-footer .value{font-weight:800;color:#1f2b25;}");
             html.AppendLine(".confidential{margin-top:12px;background:#f6f8f6;border:1px solid #e5ebe7;border-radius:14px;padding:12px 14px;font-size:12px;color:#607169;}");
@@ -553,8 +583,11 @@ namespace CassetteMotionPro.Workspace
             AddHeroCard(html, "Report View", session.HideBeforeMeasurementsInReport ? "Final fit only" : "Before / After");
             html.AppendLine("</div>");
             html.AppendLine("<div class=\"prepared-card\">");
-            html.AppendLine("<div><div class=\"label\">Report prepared by</div><div class=\"value\">" + Encode(PreparedByName) + "<br>" + Encode(PreparedByRole) + "</div></div>");
-            html.AppendLine("<div class=\"contact\">" + Encode(StudioContact) + "<br>" + Encode(ConfidentialNotice) + "</div>");
+            html.AppendLine("<div><div class=\"label\">Report prepared by</div><div class=\"value\">" + Encode(StudioName) + "<br>" + Encode(PreparedByRole) + "</div></div>");
+            html.AppendLine("<div class=\"contact\">");
+            AddStudioContactGrid(html);
+            html.AppendLine("<div style=\"margin-top:8px\">" + Encode(ConfidentialNotice) + "</div>");
+            html.AppendLine("</div>");
             html.AppendLine("</div>");
             html.AppendLine("</div>");
             AddReviewStrip(html, session);
@@ -565,7 +598,8 @@ namespace CassetteMotionPro.Workspace
             html.AppendLine("<table>");
             AddDetailRow(html, "Client", client.DisplayName);
             AddDetailRow(html, "Bike", client.BikeDescription);
-            AddDetailRow(html, "Prepared by", PreparedByName);
+            AddDetailRow(html, "Prepared by", StudioName);
+            AddDetailRow(html, "Fitter", FitterName);
             AddDetailRow(html, "Measurement view", session.HideBeforeMeasurementsInReport ? "Final fit measurements only" : "Before / After comparison");
             html.AppendLine("</table>");
             html.AppendLine("</div>");
@@ -659,11 +693,13 @@ namespace CassetteMotionPro.Workspace
             html.AppendLine("<h2>Recommendations and Notes</h2>");
             html.AppendLine("<div class=\"note\">" + EncodeOrPlaceholder(session.Notes) + "</div>");
             html.AppendLine("<div class=\"prepared-footer\">");
-            html.AppendLine("<div><div class=\"label\">Report prepared by</div><div class=\"value\">" + Encode(PreparedByName) + "</div><div>" + Encode(PreparedByRole) + "</div></div>");
-            html.AppendLine("<div><div class=\"label\">Studio contact</div><div>" + Encode(StudioContact) + "</div></div>");
+            html.AppendLine("<div><div class=\"label\">Report prepared by</div><div class=\"value\">" + Encode(StudioName) + "</div><div>" + Encode(PreparedByRole) + "</div><div>Fitter: " + Encode(FitterName) + "</div></div>");
+            html.AppendLine("<div><div class=\"label\">Studio contact</div>");
+            AddStudioContactGrid(html);
+            html.AppendLine("</div>");
             html.AppendLine("</div>");
             html.AppendLine("<div class=\"confidential\">" + Encode(ConfidentialNotice) + "</div>");
-            html.AppendLine("<div class=\"footer\"><span>Generated by Cassette Motion Pro v0.12.1</span><span>Professional bike fitting report</span></div>");
+            html.AppendLine("<div class=\"footer\"><span>Generated by Cassette Motion Pro v0.12.2</span><span>Professional bike fitting report</span></div>");
             html.AppendLine("</div>");
             html.AppendLine("</div>");
             html.AppendLine("</body>");

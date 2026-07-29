@@ -1,0 +1,58 @@
+Cassette Motion Pro v0.12.2 - Studio Contact Settings Prep
+
+This update cleans up the report prepared-by/contact area and prepares it for
+a future editable Settings screen.
+
+What changed:
+
+- Generated reports show studio contact placeholders as separate lines:
+  Fitter, Phone, Email, and Website.
+- Generated report header contact block is cleaner.
+- Generated report footer contact block is cleaner.
+- Session Summary.txt includes Fitter, Phone, Email, and Website placeholders.
+- Keeps the v0.12.1 prepared-by/confidential report wording.
+- Keeps the v0.12.0 professional report polish workflow.
+- Updates app/build/installer/report versions to 0.12.2.
+- Removes the temporary upload test file when committed from the clean repo.
+
+Recommended upload steps:
+
+1. Use the clean local repository:
+
+   /Users/cesarcorrea/Documents/Codex/cassette-motion-pro-clean
+
+2. Commit with this message:
+
+   Add v0.12.2 studio contact settings prep
+
+3. Push origin from GitHub Desktop.
+
+4. Go to Actions.
+
+5. Open the newest run.
+
+6. Download:
+
+   CassetteMotionPro-Windows-0.12.2
+
+What to test:
+
+1. Open Bike Fit Workspace.
+2. Open or create a fit session.
+3. Fill in a few Fit Summary and Bike Metrics fields.
+4. Click Preview Report or Generate Report.
+5. Confirm the report header shows:
+   - Report prepared by
+   - Cassette Fit Studio
+   - Fitter
+   - Phone
+   - Email
+   - Website
+6. Confirm the report footer shows the same contact fields.
+7. Use Print / Save PDF and confirm the layout still looks good.
+8. Click Package.
+9. Open Session Summary.txt.
+10. Confirm it includes Prepared by, Fitter, Phone, Email, and Website.
+11. Click Zip.
+12. Confirm the zip still contains the same package files.
+13. Confirm the Windows bundle contains CassetteMotionPro-Installer-0.12.2.exe.
