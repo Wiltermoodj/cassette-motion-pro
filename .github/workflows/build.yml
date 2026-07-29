@@ -92,6 +92,10 @@ jobs:
             Write-Host "Restoring packages from $($_.FullName)"
             nuget restore $_.FullName -PackagesDirectory src\packages
           }
+          Get-ChildItem src -Recurse -Filter *.csproj | ForEach-Object {
+            Write-Host "Restoring PackageReference dependencies from $($_.FullName)"
+            msbuild $_.FullName /t:Restore /p:Platform="x64" /p:Configuration=Release
+          }
 
       - name: Build solution
         run: msbuild src/CassetteMotionPro.sln /p:Platform="x64" /p:Configuration=Release /p:AllowedReferenceRelatedFileExtensions=none /p:AllowUnsafeBlocks=true
