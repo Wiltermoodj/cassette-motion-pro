@@ -102,6 +102,20 @@ jobs:
             msbuild $_.FullName /t:Restore /p:Platform="x64" /p:Configuration=Release
           }
 
+      - name: Remove native PlayerServer project from CI build
+        shell: pwsh
+        run: |
+          $projectPath = "src\Kinovea\Kinovea.csproj"
+          [xml]$project = Get-Content $projectPath
+          $namespace = New-Object System.Xml.XmlNamespaceManager($project.NameTable)
+          $namespace.AddNamespace("msb", "http://schemas.microsoft.com/developer/msbuild/2003")
+          $references = $project.SelectNodes("//msb:ProjectReference[contains(@Include, 'Kinovea.Video.FFMpeg\\PlayerServer\\PlayerServer.vcxproj')]", $namespace)
+          foreach ($reference in $references) {
+            Write-Host "Removing native PlayerServer project reference for CI build."
+            $reference.ParentNode.RemoveChild($reference) | Out-Null
+          }
+          $project.Save((Resolve-Path $projectPath))
+
       - name: Build solution
         run: msbuild src/CassetteMotionPro.sln /p:Platform="x64" /p:Configuration=Release /p:AllowedReferenceRelatedFileExtensions=none /p:AllowUnsafeBlocks=true
 
