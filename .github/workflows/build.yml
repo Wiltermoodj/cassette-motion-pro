@@ -88,7 +88,7 @@ jobs:
         run: nuget restore src/CassetteMotionPro.sln
 
       - name: Build solution
-        run: msbuild src/CassetteMotionPro.sln /p:Platform="x64" /p:Configuration=Release /p:AllowedReferenceRelatedFileExtensions=none
+        run: msbuild src/CassetteMotionPro.sln /p:Platform="x64" /p:Configuration=Release /p:AllowedReferenceRelatedFileExtensions=none /p:AllowUnsafeBlocks=true
 
       - name: Create portable settings folder
         shell: cmd
