@@ -105,15 +105,20 @@ jobs:
       - name: Remove native PlayerServer project from CI build
         shell: pwsh
         run: |
-          $projectPath = "src\Kinovea\Kinovea.csproj"
-          $content = Get-Content $projectPath -Raw
           $pattern = '(?s)\s*<ProjectReference Include="\.\.\\Kinovea\.Video\.FFMpeg\\PlayerServer\\PlayerServer\.vcxproj">.*?</ProjectReference>'
-          $updated = [regex]::Replace($content, $pattern, "")
-          if ($updated -eq $content) {
-            throw "Native PlayerServer project reference was not found in $projectPath."
+          $removedCount = 0
+          Get-ChildItem src -Recurse -Filter *.csproj | ForEach-Object {
+            $content = Get-Content $_.FullName -Raw
+            $updated = [regex]::Replace($content, $pattern, "")
+            if ($updated -ne $content) {
+              Set-Content $_.FullName $updated
+              $removedCount++
+              Write-Host "Removed native PlayerServer project reference from $($_.FullName)."
+            }
           }
-          Set-Content $projectPath $updated
-          Write-Host "Removed native PlayerServer project reference for CI build."
+          if ($removedCount -eq 0) {
+            throw "Native PlayerServer project reference was not found in restored CI projects."
+          }
 
       - name: Build solution
         run: msbuild src/CassetteMotionPro.sln /p:Platform="x64" /p:Configuration=Release /p:AllowedReferenceRelatedFileExtensions=none /p:AllowUnsafeBlocks=true
