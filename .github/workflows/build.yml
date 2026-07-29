@@ -47,6 +47,7 @@ jobs:
           if ($robocopyExitCode -gt 7) {
             throw "robocopy failed with exit code $robocopyExitCode."
           }
+          $global:LASTEXITCODE = 0
           Get-ChildItem $refsTarget | Select-Object Name, Length
 
       - name: Setup MSBuild
