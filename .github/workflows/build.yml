@@ -57,10 +57,10 @@ jobs:
         uses: NuGet/setup-nuget@v2
 
       - name: Restore NuGet packages
-        run: nuget restore src/CassetteMotionPro.sln
+        run: nuget restore src/Kinovea/Kinovea.csproj
 
       - name: Build solution
-        run: msbuild src/CassetteMotionPro.sln /p:Platform="x64" /p:Configuration=Release /p:AllowedReferenceRelatedFileExtensions=none
+        run: msbuild src/Kinovea/Kinovea.csproj /p:Platform="x64" /p:Configuration=Release /p:AllowedReferenceRelatedFileExtensions=none
 
       - name: Create portable settings folder
         shell: cmd
