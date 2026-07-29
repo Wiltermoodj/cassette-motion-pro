@@ -70,7 +70,7 @@ jobs:
             $target = Join-Path "src" $_.Name
             if (!(Test-Path $target)) {
               Write-Host "Restoring upstream project folder $($_.Name)"
-              robocopy $_.FullName $target /E /NFL /NDL /NJH /NJS /NP
+              robocopy $_.FullName $target /E /XD bin obj .vs /NFL /NDL /NJH /NJS /NP
               $robocopyExitCode = $LASTEXITCODE
               if ($robocopyExitCode -gt 7) {
                 throw "robocopy failed while restoring $($_.Name) with exit code $robocopyExitCode."
@@ -81,7 +81,7 @@ jobs:
           if (!(Test-Path "src\Kinovea\app.config") -and (Test-Path "$upstreamSrc\Kinovea\app.config")) {
             Copy-Item "$upstreamSrc\Kinovea\app.config" "src\Kinovea\app.config" -Force
           }
-          robocopy "$upstreamSrc\Kinovea" "src\Kinovea" /E /XC /XN /XO /NFL /NDL /NJH /NJS /NP
+          robocopy "$upstreamSrc\Kinovea" "src\Kinovea" /E /XC /XN /XO /XD bin obj .vs /NFL /NDL /NJH /NJS /NP
           $robocopyExitCode = $LASTEXITCODE
           if ($robocopyExitCode -gt 7) {
             throw "robocopy failed while restoring missing Kinovea app files with exit code $robocopyExitCode."
@@ -123,6 +123,61 @@ jobs:
 
       - name: Build solution
         run: msbuild src/CassetteMotionPro.sln /p:Platform="x64" /p:Configuration=Release /p:AllowedReferenceRelatedFileExtensions=none /p:AllowUnsafeBlocks=true
+
+      - name: Verify and stage x64 video assemblies
+        shell: pwsh
+        run: |
+          $output = "src\Kinovea\bin\x64\Release"
+          if (!(Test-Path $output)) {
+            throw "Expected x64 output folder was not found: $output"
+          }
+
+          $videoProjects = @(
+            "Kinovea.Video",
+            "Kinovea.Video.Bitmap",
+            "Kinovea.Video.GIF",
+            "Kinovea.Video.SVG",
+            "Kinovea.Video.Synthetic"
+          )
+
+          foreach ($project in $videoProjects) {
+            $dll = "src\$project\bin\x64\Release\$project.dll"
+            if (Test-Path $dll) {
+              Copy-Item $dll $output -Force
+              Write-Host "Staged fresh x64 assembly: $project.dll"
+            }
+          }
+
+          function Get-PeMachine($path) {
+            $bytes = [System.IO.File]::ReadAllBytes($path)
+            $peOffset = [BitConverter]::ToInt32($bytes, 0x3C)
+            $machine = [BitConverter]::ToUInt16($bytes, $peOffset + 4)
+            switch ($machine) {
+              0x014c { return "x86" }
+              0x8664 { return "x64" }
+              0x0200 { return "IA64" }
+              default { return ("0x{0:X4}" -f $machine) }
+            }
+          }
+
+          $exe = Join-Path $output "CassetteMotionPro.exe"
+          $video = Join-Path $output "Kinovea.Video.dll"
+          if (!(Test-Path $exe)) {
+            throw "CassetteMotionPro.exe was not found in $output"
+          }
+          if (!(Test-Path $video)) {
+            throw "Kinovea.Video.dll was not found in $output"
+          }
+
+          $exeMachine = Get-PeMachine $exe
+          $videoMachine = Get-PeMachine $video
+          Write-Host "CassetteMotionPro.exe machine: $exeMachine"
+          Write-Host "Kinovea.Video.dll machine: $videoMachine"
+
+          if ($exeMachine -ne "x64" -or $videoMachine -ne "x64") {
+            Get-ChildItem "src" -Recurse -Filter "Kinovea.Video.dll" | Select-Object FullName, Length
+            throw "Architecture mismatch detected. Expected x64 EXE and x64 Kinovea.Video.dll, got EXE=$exeMachine VIDEO=$videoMachine."
+          }
 
       - name: Create portable settings folder
         shell: cmd
