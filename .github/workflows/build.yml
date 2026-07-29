@@ -85,7 +85,13 @@ jobs:
         uses: NuGet/setup-nuget@v2
 
       - name: Restore NuGet packages
-        run: nuget restore src/CassetteMotionPro.sln
+        shell: pwsh
+        run: |
+          nuget restore src/CassetteMotionPro.sln
+          Get-ChildItem src -Recurse -Filter packages.config | ForEach-Object {
+            Write-Host "Restoring packages from $($_.FullName)"
+            nuget restore $_.FullName -PackagesDirectory src\packages
+          }
 
       - name: Build solution
         run: msbuild src/CassetteMotionPro.sln /p:Platform="x64" /p:Configuration=Release /p:AllowedReferenceRelatedFileExtensions=none /p:AllowUnsafeBlocks=true
