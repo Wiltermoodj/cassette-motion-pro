@@ -17,7 +17,7 @@ namespace CassetteMotionPro.Clients
     public class ClientRepository
     {
         private const string ManifestFileName = "client.xml";
-        private static readonly string[] ClientFolders = { "Videos", "Photos", "Reports", "Measurements", "Notes" };
+        private static readonly string[] ClientFolders = { "Videos", "Photos", "Side-by-Side", "Reports", "Measurements", "Notes" };
         private readonly XmlSerializer serializer = new XmlSerializer(typeof(ClientRecord));
 
         public string RootPath { get; private set; }

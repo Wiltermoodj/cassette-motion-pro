@@ -1595,7 +1595,7 @@ namespace CassetteMotionPro.Workspace
         private string CreateBeforeAfterCombinedImage(string beforePath, string afterPath)
         {
             string sessionFolderName = string.Format("{0:yyyy-MM-dd}_{1}", currentSession.SessionDate, currentSession.Id.ToString("N").Substring(0, 8));
-            string destinationDirectory = Path.Combine(client.PhotosPath, "Fit Sessions", sessionFolderName, "Report Images");
+            string destinationDirectory = Path.Combine(client.SideBySidePath, "Fit Sessions", sessionFolderName);
             Directory.CreateDirectory(destinationDirectory);
 
             string destinationPath = Path.Combine(destinationDirectory, "Before_After_Side_by_side.jpg");
