@@ -20,6 +20,18 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Prepare Windows bundle folder
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist\windows
+          @(
+            "Installer build status: NOT STARTED"
+            "Version: $env:VERSION"
+            ""
+            "The workflow stopped before portable or installer artifacts were created."
+            "Open the GitHub Actions build log and check the first failed step above Upload Windows bundle."
+          ) | Set-Content "dist\windows\INSTALLER-BUILD-STATUS.txt"
+
       - name: Restore upstream native dependencies
         shell: pwsh
         run: |
