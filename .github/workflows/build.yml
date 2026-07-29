@@ -53,7 +53,14 @@ jobs:
       - name: Restore upstream project dependencies
         shell: pwsh
         run: |
-          $upstreamSrc = "$env:RUNNER_TEMP\kinovea-upstream\src"
+          $upstreamRoot = "$env:RUNNER_TEMP\kinovea-upstream"
+          $upstreamSrc = "$upstreamRoot\src"
+          if (!(Test-Path $upstreamSrc)) {
+            $upstreamSrc = $upstreamRoot
+          }
+          if (!(Test-Path "$upstreamSrc\Kinovea")) {
+            throw "Could not find upstream Kinovea project folder under $upstreamSrc."
+          }
           Get-ChildItem $upstreamSrc -Directory -Filter "Kinovea.*" | ForEach-Object {
             $target = Join-Path "src" $_.Name
             if (!(Test-Path $target)) {
