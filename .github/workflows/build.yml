@@ -99,16 +99,16 @@ jobs:
 
           $content = Get-Content $expTreeLibProject -Raw
           if ($content -notmatch "Release\|x86") {
-            $x86PropertyGroups = @'
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x86'">
-    <OutputPath>bin\x86\Debug\</OutputPath>
-    <PlatformTarget>x86</PlatformTarget>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x86'">
-    <OutputPath>bin\x86\Release\</OutputPath>
-    <PlatformTarget>x86</PlatformTarget>
-  </PropertyGroup>
-'@
+            $x86PropertyGroups = @(
+              '  <PropertyGroup Condition="''$(Configuration)|$(Platform)'' == ''Debug|x86''">'
+              '    <OutputPath>bin\x86\Debug\</OutputPath>'
+              '    <PlatformTarget>x86</PlatformTarget>'
+              '  </PropertyGroup>'
+              '  <PropertyGroup Condition="''$(Configuration)|$(Platform)'' == ''Release|x86''">'
+              '    <OutputPath>bin\x86\Release\</OutputPath>'
+              '    <PlatformTarget>x86</PlatformTarget>'
+              '  </PropertyGroup>'
+            ) -join "`r`n"
             $content = $content -replace "</Project>", "$x86PropertyGroups`r`n</Project>"
             Set-Content $expTreeLibProject $content
             Write-Host "Added x86 build settings to ExpTreeLib."
