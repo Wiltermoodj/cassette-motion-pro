@@ -38,6 +38,8 @@ using Kinovea.Updater;
 using Kinovea.Video;
 using Kinovea.Camera;
 using System.Linq;
+using CassetteMotionPro.Clients;
+using CassetteMotionPro.Workspace;
 
 namespace Kinovea.Root
 {
@@ -56,8 +58,16 @@ namespace Kinovea.Root
         private UpdaterKernel updater;
         private ScreenManagerKernel screenManager;
         private Stopwatch stopwatch = new Stopwatch();
+        private ClientRepository clientRepository;
+        private System.Windows.Forms.Timer bodyAngleActivationTimer;
         
         #region Menus
+
+        // Clients
+        private ToolStripMenuItem mnuClients = new ToolStripMenuItem();
+        private ToolStripMenuItem mnuClientManager = new ToolStripMenuItem();
+        private ToolStripMenuItem mnuNewClient = new ToolStripMenuItem();
+        private ToolStripMenuItem mnuRecentClients = new ToolStripMenuItem();
 
         // File
         private ToolStripMenuItem mnuFile = new ToolStripMenuItem();
@@ -119,6 +129,7 @@ namespace Kinovea.Root
         #endregion
         
         private ToolStripButton toolOpenFile = new ToolStripButton();
+        private ToolStripButton toolClients = new ToolStripButton();
         private ToolStripStatusLabel statusLabel = new ToolStripStatusLabel();
 
         private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
@@ -185,6 +196,8 @@ namespace Kinovea.Root
                 VariablesRepository.Initialize();
                 log.DebugFormat("Loaded variables:{0} ms.", stopwatch.ElapsedMilliseconds);
             }
+
+            clientRepository = new ClientRepository();
 
             // Build all other modules and their UI.
             BuildSubTree();
@@ -344,6 +357,27 @@ namespace Kinovea.Root
         private void GetModuleMenus(ToolStrip menu)
         {
             // Affectation of .Text property happens in RefreshCultureMenu
+
+            #region Clients
+            mnuClients.MergeAction = MergeAction.Append;
+            mnuClientManager.Image = Properties.Resources.user_detective;
+            mnuClientManager.ShortcutKeys = Keys.Control | Keys.Shift | Keys.C;
+            mnuClientManager.Click += mnuClientManager_Click;
+
+            mnuNewClient.Image = Properties.Resources.folder_add;
+            mnuNewClient.ShortcutKeys = Keys.Control | Keys.Shift | Keys.N;
+            mnuNewClient.Click += mnuNewClient_Click;
+
+            mnuRecentClients.Image = Properties.Resources.time;
+            mnuRecentClients.DropDownOpening += delegate { BuildRecentClientMenus(); };
+
+            mnuClients.DropDownItems.AddRange(new ToolStripItem[] {
+                mnuClientManager,
+                mnuNewClient,
+                new ToolStripSeparator(),
+                mnuRecentClients
+            });
+            #endregion
             
             #region File
             mnuFile.MergeAction = MergeAction.Append;
@@ -515,7 +549,7 @@ namespace Kinovea.Root
 
             // Top level merge.
             MenuStrip thisMenuStrip = new MenuStrip();
-            thisMenuStrip.Items.AddRange(new ToolStripItem[] { mnuFile, mnuEdit, mnuView, mnuImage, mnuVideo, mnuTools, mnuWindow, mnuOptions, mnuHelp });
+            thisMenuStrip.Items.AddRange(new ToolStripItem[] { mnuClients, mnuFile, mnuEdit, mnuView, mnuImage, mnuVideo, mnuTools, mnuWindow, mnuOptions, mnuHelp });
             thisMenuStrip.AllowMerge = true;
 
             ToolStripManager.Merge(thisMenuStrip, menu);
@@ -532,12 +566,19 @@ namespace Kinovea.Root
         }
         private void GetModuleToolBar(ToolStrip toolbar)
         {
+            toolClients.DisplayStyle = ToolStripItemDisplayStyle.Image;
+            toolClients.Image = Properties.Resources.user_detective;
+            toolClients.ToolTipText = "Client Manager";
+            toolClients.Click += mnuClientManager_Click;
+
             // Open.
             toolOpenFile.DisplayStyle = ToolStripItemDisplayStyle.Image;
             toolOpenFile.Image = Properties.Resources.folder;
             toolOpenFile.ToolTipText = ScreenManagerLang.mnuOpenVideo;
             toolOpenFile.Click += new EventHandler(mnuOpenFileOnClick);
             
+            toolbar.Items.Add(toolClients);
+            toolbar.Items.Add(new ToolStripSeparator());
             toolbar.Items.Add(toolOpenFile);
         }
         private void GetSubModulesToolBars(ToolStrip toolbar)
@@ -548,6 +589,11 @@ namespace Kinovea.Root
         }
         private void RefreshCultureMenu()
         {
+            mnuClients.Text = "Clients";
+            mnuClientManager.Text = "Client Manager";
+            mnuNewClient.Text = "New Client...";
+            mnuRecentClients.Text = "Recent Clients";
+
             mnuFile.Text = RootLang.mnuFile;
             mnuOpenFile.Text = ScreenManagerLang.mnuOpenVideo;
 
@@ -615,6 +661,134 @@ namespace Kinovea.Root
         #endregion
 
         #region Menus Event Handlers
+
+        #region Clients
+        private void mnuClientManager_Click(object sender, EventArgs e)
+        {
+            using (ClientManagerForm form = new ClientManagerForm(clientRepository, OpenClient, QueueClientWorkspace))
+                form.ShowDialog(mainWindow);
+
+            BuildRecentClientMenus();
+        }
+
+        private void mnuNewClient_Click(object sender, EventArgs e)
+        {
+            using (NewClientForm form = new NewClientForm())
+            {
+                if (form.ShowDialog(mainWindow) != DialogResult.OK)
+                    return;
+
+                try
+                {
+                    ClientRecord client = clientRepository.Create(form.Client);
+                    OpenClientWorkspace(client);
+                }
+                catch (Exception exception)
+                {
+                    MessageBox.Show(mainWindow, "The client could not be created.\n\n" + exception.Message, "Client Manager", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+        }
+
+        private void OpenClient(ClientRecord client)
+        {
+            if (client == null)
+                return;
+
+            clientRepository.MarkOpened(client);
+            NotificationCenter.RaiseFolderChangeAsked(client.VideosPath);
+            statusLabel.Text = string.Format("Client: {0} · {1}", client.DisplayName, client.BikeDescription);
+            BuildRecentClientMenus();
+        }
+
+        private void OpenClientWorkspace(ClientRecord client)
+        {
+            if (client == null)
+                return;
+
+            clientRepository.MarkOpened(client);
+            statusLabel.Text = string.Format("Fit session: {0} · {1}", client.DisplayName, client.BikeDescription);
+            using (BikeFitWorkspaceForm form = new BikeFitWorkspaceForm(client, OpenFromPath, OpenBeforeAfterPair, OpenBodyAngleGuide))
+                form.ShowDialog(mainWindow);
+            BuildRecentClientMenus();
+        }
+
+        private void OpenBodyAngleGuide(string path)
+        {
+            if (string.IsNullOrEmpty(path) || !File.Exists(path))
+                return;
+
+            int target = screenManager.FindTargetScreen(typeof(PlayerScreen));
+            if (target < 0)
+                target = 0;
+
+            NotificationCenter.RaiseLoadVideoAsked(path, target);
+            screenManager.OrganizeScreens();
+            ActivateBodyAngleToolWhenReady(target);
+        }
+
+        private void ActivateBodyAngleToolWhenReady(int target)
+        {
+            if (bodyAngleActivationTimer != null)
+            {
+                bodyAngleActivationTimer.Stop();
+                bodyAngleActivationTimer.Dispose();
+            }
+
+            int attempts = 0;
+            bodyAngleActivationTimer = new System.Windows.Forms.Timer();
+            bodyAngleActivationTimer.Interval = 150;
+            bodyAngleActivationTimer.Tick += delegate
+            {
+                attempts++;
+                if (screenManager.ActivateDrawingTool("Bikefit", target))
+                {
+                    bodyAngleActivationTimer.Stop();
+                    bodyAngleActivationTimer.Dispose();
+                    bodyAngleActivationTimer = null;
+                    statusLabel.Text = "Bike Fit Angles active: click the rider to place the guided overlay.";
+                }
+                else if (attempts >= 40)
+                {
+                    bodyAngleActivationTimer.Stop();
+                    bodyAngleActivationTimer.Dispose();
+                    bodyAngleActivationTimer = null;
+                    statusLabel.Text = "The Bike Fit Angles tool could not start. Reopen the fit workspace and try again.";
+                }
+            };
+
+            statusLabel.Text = "Loading video and preparing the Bike Fit Angles tool...";
+            bodyAngleActivationTimer.Start();
+        }
+
+        private void QueueClientWorkspace(ClientRecord client)
+        {
+            mainWindow.BeginInvoke((MethodInvoker)delegate { OpenClientWorkspace(client); });
+        }
+
+        private void BuildRecentClientMenus()
+        {
+            mnuRecentClients.DropDownItems.Clear();
+            IList<ClientRecord> clients = clientRepository.LoadAll().Take(8).ToList();
+            if (clients.Count == 0)
+            {
+                ToolStripMenuItem empty = new ToolStripMenuItem("No recent clients");
+                empty.Enabled = false;
+                mnuRecentClients.DropDownItems.Add(empty);
+                return;
+            }
+
+            foreach (ClientRecord client in clients)
+            {
+                ClientRecord recentClient = client;
+                ToolStripMenuItem item = new ToolStripMenuItem();
+                item.Text = string.Format("{0}  -  {1}", recentClient.DisplayName, recentClient.BikeDescription);
+                item.Image = Properties.Resources.folder;
+                item.Click += delegate { OpenClient(recentClient); };
+                mnuRecentClients.DropDownItems.Add(item);
+            }
+        }
+        #endregion
 
         #region File
         private void mnuOpenFileOnClick(object sender, EventArgs e)
@@ -1172,6 +1346,49 @@ namespace Kinovea.Root
                     MessageBox.Show(ScreenManagerLang.LoadMovie_FileNotOpened, ScreenManagerLang.LoadMovie_Error, MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
                 }
             }
+        }
+
+        private void OpenBeforeAfterPair(string beforePath, string afterPath)
+        {
+            if (string.IsNullOrEmpty(beforePath) || string.IsNullOrEmpty(afterPath) || !File.Exists(beforePath) || !File.Exists(afterPath))
+                return;
+
+            EnsureTwoPlaybackScreens();
+            LoadVideoInTargetScreen(beforePath, 0);
+            LoadVideoInTargetScreen(afterPath, 1);
+            screenManager.OrganizeScreens();
+        }
+
+        private void EnsureTwoPlaybackScreens()
+        {
+            for (int index = screenManager.ScreenCount - 1; index >= 0; index--)
+            {
+                AbstractScreen screen = screenManager.GetScreenAt(index);
+                if (screen != null && !(screen is PlayerScreen))
+                    screenManager.RemoveScreen(screen);
+            }
+
+            if (screenManager.ScreenCount == 0)
+            {
+                screenManager.AddPlayerScreen();
+                screenManager.AddPlayerScreen();
+            }
+            else if (screenManager.ScreenCount == 1)
+            {
+                screenManager.AddPlayerScreen();
+            }
+        }
+
+        private void LoadVideoInTargetScreen(string path, int targetScreen)
+        {
+            ScreenDescriptorPlayback sdp = new ScreenDescriptorPlayback();
+            sdp.FullPath = path;
+            sdp.IsReplayWatcher = false;
+            sdp.Stretch = false;
+            sdp.Autoplay = false;
+            sdp.SpeedPercentage = PreferencesManager.PlayerPreferences.DefaultReplaySpeed;
+
+            LoaderVideo.LoadVideoInScreen(screenManager, path, targetScreen, sdp);
         }
         private void ToggleFullScreen()
         {

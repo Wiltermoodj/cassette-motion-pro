@@ -5,7 +5,7 @@ Cassette Motion Pro is professional bike fitting software built on the
 keeps bike-fit-specific code and branding isolated so upstream Kinovea updates
 can be incorporated with minimal changes to the playback and annotation engine.
 
-## Current milestone: 0.1 branding foundation
+## Current milestone: 0.11.4 session summary package
 
 - Complete Kinovea source imported under `src/`
 - Application output renamed to `CassetteMotionPro.exe`
@@ -14,9 +14,100 @@ can be incorporated with minimal changes to the playback and annotation engine.
 - New application icon, splash screen, and About dialog artwork
 - Windows installer and portable artifact names updated
 - Windows build workflow provided at `.github/workflows/build.yml`
+- Dedicated Client Manager with search and recent clients
+- Persistent client, contact, bicycle, and notes records
+- Automatic Videos, Photos, Reports, Measurements, and Notes folders
+- One-click navigation from a client record into the existing video workflow
+- Persistent fit sessions attached to each client
+- Simple before and after video slots
+- Video import into organized client-specific folders
+- One-click synchronized before/after comparison
+- Rider goals, fit notes, session status, and before/after bike measurements
+- Saddle-tip-to-grip reach recorded before and after the fit
+- Handlebar X and Handlebar Y recorded before and after the fit
+- Guided bike-fit posture overlay for knee, hip, ankle, torso, shoulder, and
+  elbow angles
+- Reliable automatic overlay activation after the selected video finishes loading
+- Persistent Before/After body-angle chart for every fit session
+- Workspace sessions save automatically when closing the fit workspace
+- Clear save message showing that sessions live in the client Measurements folder
+- One-click HTML report generation saved to the client Reports folder
+- One-click Reports folder access from the Bike Fit Workspace
+- Printable report layout with before/after placeholders and change column
+- Before and after report image selection saved with each fit session
+- Report images copied into the client Photos folder and shown in reports
+- Side-by-side report image selection shown full-width in generated reports
+- Bike Metrics tab with Before/After inputs, measurement guidance, and Assist
+  placeholders for future image-based capture
+- Measurement reference image saved with each fit session and shown in reports
+- Image Measurement Assistant foundation opened from Bike Metrics Assist
+- One-button Before + After image combine for side-by-side reports and Bike
+  Metrics measurement reference images
+- Click-to-measure Bike Metrics assistant with image calibration, two-point
+  measurement, and save-back to Before or After values
+- Negative measurement support for cases like saddle setback
+- Side-by-side-only report image workflow so Before/After images are optional
+- Saddle setback Assist uses a horizontal-only distance measurement
+- Zoom and pan controls in the Image Measurement Assistant for more precise clicks
+- Manual signed measurement entry for values such as `-9 mm`
+- Bike Metrics Assist opens saddle setback, handlebar X, handlebar Y, and
+  saddle-tip-to-grip reach with the correct horizontal/vertical distance mode
+- GitHub Actions publishes a combined Windows bundle artifact containing both
+  the portable zip and installer executable
+- Guided Landmark Capture calculates saddle height, saddle setback, saddle-tip-
+  to-grip reach, handlebar X, and handlebar Y from four clicked bike landmarks
+- Image Measurement Assistant uses bike-fitting tool labels: Distance, Distance
+  (horizontal), and Distance (vertical)
+- Windows bundle uploads an installer build status file so missing installer
+  artifacts are easier to diagnose in future updates
+- Guided Capture has a larger current-point prompt, Undo Last Point, Flip
+  Setback Sign, and a save confirmation preview
+- GitHub Actions installs NSIS through Chocolatey and calls the exact
+  `makensis.exe` path to make installer builds more reliable
+- Guided Capture supports an optional level reference line for tilted images,
+  Recalculate Values, and explicit saddle setback convention
+- Guided Capture saddle setback convention is behind BB = negative and in front
+  of BB = positive
+- Guided Capture saves measurement trace data and reports capture method, level
+  reference status, and saddle setback convention in generated reports
+- Fit Summary tab for polished main goal, key findings, changes made,
+  recommendations, and follow-up plan
+- Generated reports include a dedicated Fit Summary section when summary fields
+  are filled in
+- Preview Report button opens the generated report immediately for review
+- Generated HTML reports include a non-printing review checklist for client name,
+  images, bike metrics, and report view before saving/sending the PDF
+- Report Package button creates a share-ready folder in the client Reports
+  folder
+- Report packages include `Bike Fit Report.html` and an `Images` folder with
+  copied report images so the package can be reviewed from one place
+- Zip button creates a zipped report package for easier sharing with
+  clients or uploading to cloud storage
+- Handoff tab records what to send, client follow-up message, homework/ride
+  instructions, next appointment, and internal handoff notes
+- Report packages and zipped packages include `Client Handoff Notes.txt` as a
+  separate handoff/checklist file
+- Review Metrics button on the Bike Metrics tab checks missing key bike
+  measurements before reporting
+- Review Metrics also flags broad out-of-range final values for saddle height,
+  saddle setback, saddle-tip-to-grip reach, and handlebar X/Y
+- Review Metrics now explains which side is missing, why a value is flagged,
+  and the next action to take
+- Saddle setback review explicitly reminds fitters that behind BB should be
+  negative
+- Report packages and zipped packages include `Bike Metrics Review.txt` with
+  ready/needs-review status, missing values, double-check items, and advisory
+  reminders
+- Report packages and zipped packages include `README - Open This First.txt`
+  with clear package-opening instructions
+- Report package folder names use clearer separators and Cassette Motion Pro
+  labeling
+- Report packages and zipped packages include `Session Summary.txt` with a
+  quick plain-text overview of the client, bike, fit summary, key bike metrics,
+  body angles, notes, and handoff reminder
 
-The client manager, bike fit workspace, measurement library, and report
-generator remain future milestones. See [docs/roadmap.md](docs/roadmap.md).
+The expanded body-angle measurement library and polished PDF report generator
+remain future milestones. See [docs/roadmap.md](docs/roadmap.md).
 
 ## Build on Windows
 

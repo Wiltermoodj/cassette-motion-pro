@@ -47,7 +47,7 @@
     <PublisherName>Cassette Fit Studio</PublisherName>
     <OpenBrowserOnPublish>false</OpenBrowserOnPublish>
     <ApplicationRevision>0</ApplicationRevision>
-    <ApplicationVersion>0.7.0.0</ApplicationVersion>
+    <ApplicationVersion>0.11.4.0</ApplicationVersion>
     <UseApplicationTrust>false</UseApplicationTrust>
     <BootstrapperEnabled>true</BootstrapperEnabled>
   </PropertyGroup>
@@ -157,6 +157,8 @@
     <Reference Include="System.Configuration" />
     <Reference Include="System.Data" />
     <Reference Include="System.Drawing" />
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.IO.Compression.FileSystem" />
     <Reference Include="System.Security.AccessControl, Version=6.0.0.1, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
       <HintPath>..\packages\System.Security.AccessControl.6.0.1\lib\net461\System.Security.AccessControl.dll</HintPath>
     </Reference>
@@ -169,6 +171,26 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Branding\BrandingAssets.cs" />
+    <Compile Include="Clients\ClientRecord.cs" />
+    <Compile Include="Clients\ClientRepository.cs" />
+    <Compile Include="Clients\NewClientForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Clients\ClientManagerForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Workspace\FitSessionRecord.cs" />
+    <Compile Include="Workspace\FitSessionRepository.cs" />
+    <Compile Include="Workspace\FitSessionReportGenerator.cs" />
+    <Compile Include="Workspace\BikeMetricGuidedCaptureForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Workspace\ImageMeasurementAssistantForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Workspace\BikeFitWorkspaceForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="NativeMethods.cs" />
     <Compile Include="Properties\Resources.Designer.cs">
       <AutoGen>True</AutoGen>
