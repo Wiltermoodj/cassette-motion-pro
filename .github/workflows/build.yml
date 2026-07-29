@@ -137,9 +137,23 @@ jobs:
             throw "Kinovea.Video project was not restored: $videoProject"
           }
 
+          $ffmpegProject = "src\Kinovea.Video.FFMpeg\PlayerServer\PlayerServer.vcxproj"
+          if (!(Test-Path $ffmpegProject)) {
+            throw "Kinovea.Video.FFMpeg project was not restored: $ffmpegProject"
+          }
+
+          Remove-Item (Join-Path $output "Kinovea.Video.dll") -Force -ErrorAction SilentlyContinue
+          Remove-Item (Join-Path $output "Kinovea.Video.FFMpeg.dll") -Force -ErrorAction SilentlyContinue
+          Remove-Item "src\Kinovea.Video.FFMpeg\bin\Kinovea.Video.FFMpeg.dll" -Force -ErrorAction SilentlyContinue
+
           msbuild $videoProject /p:Platform="x64" /p:Configuration=Release /p:AllowUnsafeBlocks=true
           if ($LASTEXITCODE -ne 0) {
             throw "Kinovea.Video x64 rebuild failed with exit code $LASTEXITCODE."
+          }
+
+          msbuild $ffmpegProject /p:Platform="x64" /p:Configuration=Release /p:AllowUnsafeBlocks=true
+          if ($LASTEXITCODE -ne 0) {
+            throw "Kinovea.Video.FFMpeg x64 rebuild failed with exit code $LASTEXITCODE."
           }
 
           function Get-PeMachine($path) {
@@ -178,23 +192,41 @@ jobs:
             }
           }
 
+          $ffmpegDll = "src\Kinovea.Video.FFMpeg\bin\Kinovea.Video.FFMpeg.dll"
+          if (!(Test-Path $ffmpegDll)) {
+            throw "Fresh x64 Kinovea.Video.FFMpeg.dll was not created at $ffmpegDll"
+          }
+          $ffmpegMachine = Get-PeMachine $ffmpegDll
+          Write-Host "Kinovea.Video.FFMpeg.dll source machine: $ffmpegMachine"
+          if ($ffmpegMachine -ne "x64") {
+            throw "Kinovea.Video.FFMpeg.dll was expected to be x64, but was $ffmpegMachine at $ffmpegDll"
+          }
+          Copy-Item $ffmpegDll $output -Force
+          Write-Host "Staged fresh x64 assembly: Kinovea.Video.FFMpeg.dll"
+
           $exe = Join-Path $output "CassetteMotionPro.exe"
           $video = Join-Path $output "Kinovea.Video.dll"
+          $ffmpeg = Join-Path $output "Kinovea.Video.FFMpeg.dll"
           if (!(Test-Path $exe)) {
             throw "CassetteMotionPro.exe was not found in $output"
           }
           if (!(Test-Path $video)) {
             throw "Kinovea.Video.dll was not found in $output"
           }
+          if (!(Test-Path $ffmpeg)) {
+            throw "Kinovea.Video.FFMpeg.dll was not found in $output"
+          }
 
           $exeMachine = Get-PeMachine $exe
           $videoMachine = Get-PeMachine $video
+          $ffmpegMachine = Get-PeMachine $ffmpeg
           Write-Host "CassetteMotionPro.exe machine: $exeMachine"
           Write-Host "Kinovea.Video.dll machine: $videoMachine"
+          Write-Host "Kinovea.Video.FFMpeg.dll machine: $ffmpegMachine"
 
-          if ($exeMachine -ne "x64" -or $videoMachine -ne "x64") {
-            Get-ChildItem "src" -Recurse -Filter "Kinovea.Video.dll" | Select-Object FullName, Length
-            throw "Architecture mismatch detected. Expected x64 EXE and x64 Kinovea.Video.dll, got EXE=$exeMachine VIDEO=$videoMachine."
+          if ($exeMachine -ne "x64" -or $videoMachine -ne "x64" -or $ffmpegMachine -ne "x64") {
+            Get-ChildItem "src" -Recurse -Filter "Kinovea.Video*.dll" | Select-Object FullName, Length
+            throw "Architecture mismatch detected. Expected x64 EXE, x64 Kinovea.Video.dll, and x64 Kinovea.Video.FFMpeg.dll, got EXE=$exeMachine VIDEO=$videoMachine FFMPEG=$ffmpegMachine."
           }
 
       - name: Create portable settings folder
