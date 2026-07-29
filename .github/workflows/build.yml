@@ -89,29 +89,6 @@ jobs:
           $global:LASTEXITCODE = 0
           Get-ChildItem src -Directory -Filter "Kinovea*" | Select-Object Name
 
-      - name: Add x86 build settings for ExpTreeLib
-        shell: pwsh
-        run: |
-          $expTreeLibProject = "src\ExpTreeLib\ExpTreeLib.vbproj"
-          if (!(Test-Path $expTreeLibProject)) {
-            throw "ExpTreeLib project was not restored: $expTreeLibProject"
-          }
-
-          $content = Get-Content $expTreeLibProject -Raw
-          $x86PropertyGroups = @(
-            '  <PropertyGroup Condition="''$(Configuration)|$(Platform)'' == ''Debug|x86''">'
-            '    <OutputPath>bin\x86\Debug\</OutputPath>'
-            '    <PlatformTarget>x86</PlatformTarget>'
-            '  </PropertyGroup>'
-            '  <PropertyGroup Condition="''$(Configuration)|$(Platform)'' == ''Release|x86''">'
-            '    <OutputPath>bin\x86\Release\</OutputPath>'
-            '    <PlatformTarget>x86</PlatformTarget>'
-            '  </PropertyGroup>'
-          ) -join "`r`n"
-          $content = $content -replace "</Project>", "$x86PropertyGroups`r`n</Project>"
-          Set-Content $expTreeLibProject $content
-          Write-Host "Forced x86 build settings into ExpTreeLib."
-
       - name: Setup MSBuild
         uses: microsoft/setup-msbuild@v2
 
@@ -128,7 +105,7 @@ jobs:
           }
           Get-ChildItem src -Recurse -Filter *.csproj | ForEach-Object {
             Write-Host "Restoring PackageReference dependencies from $($_.FullName)"
-            msbuild $_.FullName /t:Restore /p:Platform="x86" /p:Configuration=Release
+            msbuild $_.FullName /t:Restore /p:Platform="x64" /p:Configuration=Release
           }
 
       - name: Patch FFmpeg headers for CI compiler
@@ -145,30 +122,24 @@ jobs:
           }
 
       - name: Build solution
-        run: msbuild src/CassetteMotionPro.sln /p:Platform="x86" /p:Configuration=Release /p:OutputPath="bin\x86\Release\\" /p:AllowedReferenceRelatedFileExtensions=none /p:AllowUnsafeBlocks=true
+        run: msbuild src/CassetteMotionPro.sln /p:Platform="x64" /p:Configuration=Release /p:AllowedReferenceRelatedFileExtensions=none /p:AllowUnsafeBlocks=true
 
-      - name: Verify and stage x86 video assemblies
+      - name: Verify and stage x64 video assemblies
         shell: pwsh
         run: |
-          $output = "src\Kinovea\bin\x86\Release"
+          $output = "src\Kinovea\bin\x64\Release"
           if (!(Test-Path $output)) {
-            throw "Expected x86 output folder was not found: $output"
+            throw "Expected x64 output folder was not found: $output"
           }
 
-          $videoProjects = @(
-            "Kinovea.Video",
-            "Kinovea.Video.Bitmap",
-            "Kinovea.Video.GIF",
-            "Kinovea.Video.SVG",
-            "Kinovea.Video.Synthetic"
-          )
+          $videoProject = "src\Kinovea.Video\Kinovea.Video.csproj"
+          if (!(Test-Path $videoProject)) {
+            throw "Kinovea.Video project was not restored: $videoProject"
+          }
 
-          foreach ($project in $videoProjects) {
-            $dll = "src\$project\bin\x86\Release\$project.dll"
-            if (Test-Path $dll) {
-              Copy-Item $dll $output -Force
-              Write-Host "Staged fresh x86 assembly: $project.dll"
-            }
+          msbuild $videoProject /p:Platform="x64" /p:Configuration=Release /p:AllowUnsafeBlocks=true
+          if ($LASTEXITCODE -ne 0) {
+            throw "Kinovea.Video x64 rebuild failed with exit code $LASTEXITCODE."
           }
 
           function Get-PeMachine($path) {
@@ -180,6 +151,30 @@ jobs:
               0x8664 { return "x64" }
               0x0200 { return "IA64" }
               default { return ("0x{0:X4}" -f $machine) }
+            }
+          }
+
+          $videoProjects = @(
+            "Kinovea.Video",
+            "Kinovea.Video.Bitmap",
+            "Kinovea.Video.GIF",
+            "Kinovea.Video.SVG",
+            "Kinovea.Video.Synthetic"
+          )
+
+          foreach ($project in $videoProjects) {
+            $dll = "src\$project\bin\x64\Release\$project.dll"
+            if ($project -eq "Kinovea.Video" -and !(Test-Path $dll)) {
+              throw "Fresh x64 Kinovea.Video.dll was not created at $dll"
+            }
+            if (Test-Path $dll) {
+              $sourceMachine = Get-PeMachine $dll
+              Write-Host "$project.dll source machine: $sourceMachine"
+              if ($sourceMachine -ne "x64") {
+                throw "$project.dll was expected to be x64, but was $sourceMachine at $dll"
+              }
+              Copy-Item $dll $output -Force
+              Write-Host "Staged fresh x64 assembly: $project.dll"
             }
           }
 
@@ -197,20 +192,20 @@ jobs:
           Write-Host "CassetteMotionPro.exe machine: $exeMachine"
           Write-Host "Kinovea.Video.dll machine: $videoMachine"
 
-          if ($exeMachine -ne "x86" -or $videoMachine -ne "x86") {
+          if ($exeMachine -ne "x64" -or $videoMachine -ne "x64") {
             Get-ChildItem "src" -Recurse -Filter "Kinovea.Video.dll" | Select-Object FullName, Length
-            throw "Architecture mismatch detected. Expected x86 EXE and x86 Kinovea.Video.dll, got EXE=$exeMachine VIDEO=$videoMachine."
+            throw "Architecture mismatch detected. Expected x64 EXE and x64 Kinovea.Video.dll, got EXE=$exeMachine VIDEO=$videoMachine."
           }
 
       - name: Create portable settings folder
         shell: cmd
-        run: mkdir src\Kinovea\bin\x86\Release\AppData
+        run: mkdir src\Kinovea\bin\x64\Release\AppData
 
       - name: Create portable zip for Windows bundle
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force dist\windows
-          Compress-Archive -Path "src\Kinovea\bin\x86\Release\*" -DestinationPath "dist\windows\CassetteMotionPro-Portable-$env:VERSION.zip" -Force
+          Compress-Archive -Path "src\Kinovea\bin\x64\Release\*" -DestinationPath "dist\windows\CassetteMotionPro-Portable-$env:VERSION.zip" -Force
           @(
             "Installer build status: NOT RUN"
             "Version: $env:VERSION"
@@ -225,11 +220,11 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: CassetteMotionPro-Portable-${{ env.VERSION }}
-          path: src/Kinovea/bin/x86/Release/
+          path: src/Kinovea/bin/x64/Release/
 
       - name: Remove portable settings folder
         shell: cmd
-        run: rmdir src\Kinovea\bin\x86\Release\AppData
+        run: rmdir src\Kinovea\bin\x64\Release\AppData
 
       - name: Install NSIS
         shell: pwsh
