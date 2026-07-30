@@ -60,6 +60,9 @@ namespace CassetteMotionPro.Clients
         public string PhotosPath { get { return Path.Combine(FolderPath ?? string.Empty, "Photos"); } }
 
         [XmlIgnore]
+        public string SideBySidePath { get { return Path.Combine(FolderPath ?? string.Empty, "Side-by-Side"); } }
+
+        [XmlIgnore]
         public string ReportsPath { get { return Path.Combine(FolderPath ?? string.Empty, "Reports"); } }
 
         [XmlIgnore]

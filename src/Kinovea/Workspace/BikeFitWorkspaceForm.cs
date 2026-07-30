@@ -165,6 +165,7 @@ namespace CassetteMotionPro.Workspace
             tabs.Dock = DockStyle.Fill;
             tabs.Padding = new Point(18, 8);
             tabs.TabPages.Add(BuildOverviewTab());
+            tabs.TabPages.Add(BuildClientFilesTab());
             tabs.TabPages.Add(BuildFitSummaryTab());
             tabs.TabPages.Add(BuildMediaTab());
             tabs.TabPages.Add(BuildReportImagesTab());
@@ -277,6 +278,63 @@ namespace CassetteMotionPro.Workspace
 
             page.Controls.Add(table);
             return page;
+        }
+
+        private TabPage BuildClientFilesTab()
+        {
+            TabPage page = NewTab("Client Files");
+            TableLayoutPanel table = new TableLayoutPanel();
+            table.Dock = DockStyle.Top;
+            table.AutoSize = true;
+            table.Padding = new Padding(24, 22, 24, 18);
+            table.ColumnCount = 3;
+            table.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 160));
+            table.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            table.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 120));
+
+            AddClientFolderRow(table, "Client folder", client.FolderPath);
+            AddClientFolderRow(table, "Videos", client.VideosPath);
+            AddClientFolderRow(table, "Photos", client.PhotosPath);
+            AddClientFolderRow(table, "Side-by-Side", client.SideBySidePath);
+            AddClientFolderRow(table, "Reports", client.ReportsPath);
+            AddClientFolderRow(table, "Measurements", client.MeasurementsPath);
+            AddClientFolderRow(table, "Notes", client.NotesPath);
+
+            Label hint = new Label();
+            hint.Text = "Use these shortcuts when you want to check where a client’s files are being saved. Opening an existing client also creates any missing folders automatically.";
+            hint.Dock = DockStyle.Fill;
+            hint.ForeColor = Color.FromArgb(92, 104, 98);
+            hint.Padding = new Padding(0, 12, 0, 0);
+            int hintRow = table.RowCount++;
+            table.RowStyles.Add(new RowStyle(SizeType.Absolute, 64));
+            table.Controls.Add(hint, 1, hintRow);
+            table.SetColumnSpan(hint, 2);
+
+            page.AutoScroll = true;
+            page.Controls.Add(table);
+            return page;
+        }
+
+        private void AddClientFolderRow(TableLayoutPanel table, string labelText, string folderPath)
+        {
+            int row = table.RowCount++;
+            table.RowStyles.Add(new RowStyle(SizeType.Absolute, 54));
+
+            Label path = new Label();
+            path.Text = folderPath;
+            path.Dock = DockStyle.Fill;
+            path.TextAlign = ContentAlignment.MiddleLeft;
+            path.ForeColor = Color.FromArgb(92, 104, 98);
+            path.AutoEllipsis = true;
+
+            Button open = CreateButton("Open", false);
+            open.Margin = new Padding(0, 8, 0, 8);
+            open.Dock = DockStyle.Fill;
+            open.Click += delegate { OpenClientFolder(folderPath, labelText); };
+
+            table.Controls.Add(FieldLabel(labelText), 0, row);
+            table.Controls.Add(path, 1, row);
+            table.Controls.Add(open, 2, row);
         }
 
         private TabPage BuildFitSummaryTab()
@@ -1193,14 +1251,20 @@ namespace CassetteMotionPro.Workspace
 
         private void OpenReports_Click(object sender, EventArgs e)
         {
+            OpenClientFolder(client.ReportsPath, "Reports");
+        }
+
+        private void OpenClientFolder(string folderPath, string folderName)
+        {
             try
             {
-                Directory.CreateDirectory(client.ReportsPath);
-                Process.Start(client.ReportsPath);
+                Directory.CreateDirectory(folderPath);
+                Process.Start(folderPath);
+                UpdateSaveHint(folderName + " folder opened.");
             }
             catch (Exception exception)
             {
-                MessageBox.Show(this, "The Reports folder could not be opened.\n\n" + exception.Message, "Reports", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(this, "The " + folderName + " folder could not be opened.\n\n" + exception.Message, folderName, MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -1595,7 +1659,7 @@ namespace CassetteMotionPro.Workspace
         private string CreateBeforeAfterCombinedImage(string beforePath, string afterPath)
         {
             string sessionFolderName = string.Format("{0:yyyy-MM-dd}_{1}", currentSession.SessionDate, currentSession.Id.ToString("N").Substring(0, 8));
-            string destinationDirectory = Path.Combine(client.PhotosPath, "Fit Sessions", sessionFolderName, "Report Images");
+            string destinationDirectory = Path.Combine(client.SideBySidePath, "Fit Sessions", sessionFolderName);
             Directory.CreateDirectory(destinationDirectory);
 
             string destinationPath = Path.Combine(destinationDirectory, "Before_After_Side_by_side.jpg");
