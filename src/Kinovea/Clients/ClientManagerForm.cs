@@ -77,7 +77,7 @@ namespace CassetteMotionPro.Clients
             title.Location = new Point(26, 18);
 
             Label subtitle = new Label();
-            subtitle.Text = "Manage riders, bicycles, videos, measurements, and reports.";
+            subtitle.Text = "Choose a client, start a fit session, then save videos, measurements, and reports into that client folder.";
             subtitle.Font = new Font("Segoe UI", 9.5F);
             subtitle.ForeColor = Color.FromArgb(175, 187, 181);
             subtitle.AutoSize = true;
@@ -181,6 +181,20 @@ namespace CassetteMotionPro.Clients
             lblNotes.Location = new Point(38, 252);
             lblNotes.ForeColor = Color.FromArgb(42, 51, 47);
 
+            Label workflowHeading = new Label();
+            workflowHeading.Text = "FIT WORKFLOW";
+            workflowHeading.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+            workflowHeading.ForeColor = Color.FromArgb(113, 127, 120);
+            workflowHeading.AutoSize = true;
+            workflowHeading.Location = new Point(38, 420);
+
+            Label workflow = new Label();
+            workflow.Text = "1. Create or select the client\n2. Start/open the fit session\n3. Add Before/After videos and images\n4. Capture Bike Metrics and body angles\n5. Preview, package, and save the report";
+            workflow.AutoSize = true;
+            workflow.MaximumSize = new Size(470, 0);
+            workflow.Location = new Point(38, 446);
+            workflow.ForeColor = Color.FromArgb(42, 51, 47);
+
             Panel actions = new Panel();
             actions.Dock = DockStyle.Bottom;
             actions.Height = 64;
@@ -202,7 +216,7 @@ namespace CassetteMotionPro.Clients
             StyleButton(btnOpenVideos, false);
             btnOpenVideos.Click += delegate { OpenSelectedClient(); };
 
-            btnWorkspace.Text = "Fit Workspace";
+            btnWorkspace.Text = "Start Fit Session";
             btnWorkspace.Size = new Size(130, 40);
             btnWorkspace.Location = new Point(311, 10);
             StyleButton(btnWorkspace, true);
@@ -217,6 +231,8 @@ namespace CassetteMotionPro.Clients
             content.Controls.Add(lblLastOpened);
             content.Controls.Add(notesHeading);
             content.Controls.Add(lblNotes);
+            content.Controls.Add(workflowHeading);
+            content.Controls.Add(workflow);
             content.Controls.Add(actions);
             parent.Controls.Add(content);
         }
