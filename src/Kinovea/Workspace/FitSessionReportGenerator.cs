@@ -14,50 +14,20 @@ using System.IO.Compression;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Web;
-using Kinovea.Services;
 
 namespace CassetteMotionPro.Workspace
 {
     public static class FitSessionReportGenerator
     {
         private const string StudioName = "Cassette Fit Studio";
-        private static string FitterName
-        {
-            get
-            {
-                var val = PreferencesManager.GeneralPreferences.FitterName;
-                return string.IsNullOrWhiteSpace(val) ? "Cesar Correa" : val;
-            }
-        }
-
-        private static string StudioPhone
-        {
-            get
-            {
-                var val = PreferencesManager.GeneralPreferences.StudioPhone;
-                return string.IsNullOrWhiteSpace(val) ? "Add phone" : val;
-            }
-        }
-
-        private static string StudioEmail
-        {
-            get
-            {
-                var val = PreferencesManager.GeneralPreferences.StudioEmail;
-                return string.IsNullOrWhiteSpace(val) ? "Add email" : val;
-            }
-        }
-
-        private static string StudioWebsite
-        {
-            get
-            {
-                var val = PreferencesManager.GeneralPreferences.StudioWebsite;
-                return string.IsNullOrWhiteSpace(val) ? "Add website" : val;
-            }
-        }
+        private const string FitterName = "Cesar Correa";
+        private const string StudioPhone = "Add phone";
+        private const string StudioEmail = "Add email";
+        private const string StudioWebsite = "Add website";
         private const string PreparedByRole = "Professional Bike Fitting";
         private const string ConfidentialNotice = "Confidential bike fit report prepared for the named client.";
+        private const string ReportVersion = "0.29.0";
+        private const string BrandLogoResourceName = "CassetteMotionPro.Brand.Logo.png";
 
         public static string Generate(ClientRecord client, FitSessionRecord session)
         {
@@ -65,13 +35,10 @@ namespace CassetteMotionPro.Workspace
                 throw new ArgumentNullException("client");
             if (session == null)
                 throw new ArgumentNullException("session");
-            if (string.IsNullOrEmpty(client.ReportsPath))
-                throw new InvalidOperationException("The client Reports folder is not available.");
-
-            Directory.CreateDirectory(client.ReportsPath);
+            string reportsPath = GetSessionReportsPath(client, session);
 
             string fileName = BuildFileName(session);
-            string path = Path.Combine(client.ReportsPath, fileName);
+            string path = Path.Combine(reportsPath, fileName);
             File.WriteAllText(path, BuildHtml(client, session, ResolveAbsoluteImageSource), Encoding.UTF8);
             return path;
         }
@@ -82,12 +49,9 @@ namespace CassetteMotionPro.Workspace
                 throw new ArgumentNullException("client");
             if (session == null)
                 throw new ArgumentNullException("session");
-            if (string.IsNullOrEmpty(client.ReportsPath))
-                throw new InvalidOperationException("The client Reports folder is not available.");
+            string reportsPath = GetSessionReportsPath(client, session);
 
-            Directory.CreateDirectory(client.ReportsPath);
-
-            string packageFolder = GetUniqueDirectoryPath(Path.Combine(client.ReportsPath, BuildPackageFolderName(client, session)));
+            string packageFolder = GetUniqueDirectoryPath(Path.Combine(reportsPath, BuildPackageFolderName(client, session)));
             string imagesFolder = Path.Combine(packageFolder, "Images");
             Directory.CreateDirectory(packageFolder);
             Directory.CreateDirectory(imagesFolder);
@@ -125,6 +89,20 @@ namespace CassetteMotionPro.Workspace
             string title = CleanFileName(string.IsNullOrWhiteSpace(session.Title) ? "Bike Fit Report" : session.Title);
             string date = session.SessionDate == DateTime.MinValue ? DateTime.Today.ToString("yyyy-MM-dd") : session.SessionDate.ToString("yyyy-MM-dd");
             return date + " - " + title + ".html";
+        }
+
+        public static string GetSessionReportsPath(ClientRecord client, FitSessionRecord session)
+        {
+            if (client == null)
+                throw new ArgumentNullException("client");
+            if (session == null)
+                throw new ArgumentNullException("session");
+            if (string.IsNullOrEmpty(client.ReportsPath))
+                throw new InvalidOperationException("The client Reports folder is not available.");
+
+            string reportsPath = Path.Combine(client.ReportsPath, "Fit Sessions", session.StorageFolderName);
+            Directory.CreateDirectory(reportsPath);
+            return reportsPath;
         }
 
         private static string BuildPackageReadmeText(ClientRecord client, FitSessionRecord session)
@@ -198,9 +176,8 @@ namespace CassetteMotionPro.Workspace
             AddSummaryMetric(text, "Knee angle", session.KneeAngleBefore, session.KneeAngleAfter, !session.HideBeforeMeasurementsInReport);
             AddSummaryMetric(text, "Hip angle", session.HipAngleBefore, session.HipAngleAfter, !session.HideBeforeMeasurementsInReport);
             AddSummaryMetric(text, "Ankle angle", session.AnkleAngleBefore, session.AnkleAngleAfter, !session.HideBeforeMeasurementsInReport);
-            AddSummaryMetric(text, "Torso angle", session.TorsoAngleBefore, session.TorsoAngleAfter, !session.HideBeforeMeasurementsInReport);
-            AddSummaryMetric(text, "Shoulder angle", session.ShoulderAngleBefore, session.ShoulderAngleAfter, !session.HideBeforeMeasurementsInReport);
-            AddSummaryMetric(text, "Elbow angle", session.ElbowAngleBefore, session.ElbowAngleAfter, !session.HideBeforeMeasurementsInReport);
+            AddSummaryMetric(text, "Body reach", session.TorsoAngleBefore, session.TorsoAngleAfter, !session.HideBeforeMeasurementsInReport);
+            AddSummaryMetric(text, "Back angle", session.ShoulderAngleBefore, session.ShoulderAngleAfter, !session.HideBeforeMeasurementsInReport);
             text.AppendLine();
 
             AddSummarySection(text, "Recommendations and notes", session.Notes);
@@ -525,6 +502,11 @@ namespace CassetteMotionPro.Workspace
         private static string BuildHtml(ClientRecord client, FitSessionRecord session, Func<string, string> imageSourceResolver)
         {
             StringBuilder html = new StringBuilder();
+            bool useCmBadge = string.Equals(session.ReportLogoStyle, "CM", StringComparison.OrdinalIgnoreCase);
+            bool hideBrandLogo = string.Equals(session.ReportLogoStyle, "None", StringComparison.OrdinalIgnoreCase);
+            string brandLogoDataUri = useCmBadge || hideBrandLogo
+                ? null
+                : GetBrandLogoDataUri();
             html.AppendLine("<!doctype html>");
             html.AppendLine("<html>");
             html.AppendLine("<head>");
@@ -538,6 +520,9 @@ namespace CassetteMotionPro.Workspace
             html.AppendLine(".hero{background:radial-gradient(circle at 82% 18%,rgba(184,243,74,.18),transparent 27%),linear-gradient(135deg,#0d1311 0%,#17261f 58%,#2a351f 100%);color:white;padding:44px 50px 36px;position:relative;}");
             html.AppendLine(".hero:after{content:\"\";position:absolute;left:50px;right:50px;bottom:0;height:1px;background:linear-gradient(90deg,rgba(184,243,74,.7),rgba(255,255,255,.08));}");
             html.AppendLine(".hero-top{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;}");
+            html.AppendLine(".brand-lockup{display:flex;align-items:center;gap:14px;}");
+            html.AppendLine(".brand-logo{width:54px;height:54px;border-radius:16px;object-fit:contain;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);padding:7px;box-shadow:0 10px 22px rgba(0,0,0,.18);}");
+            html.AppendLine(".brand-mark{width:54px;height:54px;border-radius:16px;background:rgba(184,243,74,.16);border:1px solid rgba(184,243,74,.34);display:flex;align-items:center;justify-content:center;color:var(--brand);font-weight:900;font-size:22px;letter-spacing:-.08em;box-shadow:0 10px 22px rgba(0,0,0,.18);}");
             html.AppendLine(".eyebrow{color:var(--brand);font-size:12px;font-weight:900;letter-spacing:.2em;text-transform:uppercase;}");
             html.AppendLine("h1{margin:9px 0 9px;font-size:42px;line-height:1.03;letter-spacing:-.04em;}");
             html.AppendLine("h2{margin:38px 0 12px;font-size:22px;letter-spacing:-.01em;display:flex;align-items:center;gap:10px;}");
@@ -601,10 +586,18 @@ namespace CassetteMotionPro.Workspace
             html.AppendLine("<div class=\"page\">");
             html.AppendLine("<div class=\"hero\">");
             html.AppendLine("<div class=\"hero-top\">");
+            html.AppendLine("<div class=\"brand-lockup\">");
+            if (useCmBadge)
+                html.AppendLine("<div class=\"brand-mark\">CM</div>");
+            else if (!hideBrandLogo && !string.IsNullOrEmpty(brandLogoDataUri))
+                html.AppendLine("<img class=\"brand-logo\" src=\"" + brandLogoDataUri + "\" alt=\"Cassette Motion Pro logo\">");
+            else if (!hideBrandLogo)
+                html.AppendLine("<div class=\"brand-mark\">CM</div>");
             html.AppendLine("<div>");
             html.AppendLine("<div class=\"eyebrow\">Cassette Motion Pro</div>");
             html.AppendLine("<h1>Bike Fit Report</h1>");
             html.AppendLine("<div class=\"muted report-subtitle\">" + Encode(client.DisplayName) + " · " + Encode(client.BikeDescription) + "</div>");
+            html.AppendLine("</div>");
             html.AppendLine("</div>");
             html.AppendLine("<button class=\"print-button\" onclick=\"window.print()\">Print / Save PDF</button>");
             html.AppendLine("</div>");
@@ -670,7 +663,7 @@ namespace CassetteMotionPro.Workspace
             html.AppendLine("<h2>Bike Measurements</h2>");
             html.AppendLine("<div class=\"section-kicker\">Position coordinates and contact-point measurements used to describe the bicycle setup.</div>");
             html.AppendLine("<div class=\"section-card\">");
-            if (HasBikeMetricsTrace(session))
+            if (!session.HideMeasurementCaptureTraceInReport && HasBikeMetricsTrace(session))
             {
                 html.AppendLine("<h3>Measurement capture trace</h3>");
                 AddMeasurementTable(html, new[]
@@ -716,9 +709,8 @@ namespace CassetteMotionPro.Workspace
                 Row("Knee angle", session.KneeAngleBefore, session.KneeAngleAfter),
                 Row("Hip angle", session.HipAngleBefore, session.HipAngleAfter),
                 Row("Ankle angle", session.AnkleAngleBefore, session.AnkleAngleAfter),
-                Row("Torso angle", session.TorsoAngleBefore, session.TorsoAngleAfter),
-                Row("Shoulder angle", session.ShoulderAngleBefore, session.ShoulderAngleAfter),
-                Row("Elbow angle", session.ElbowAngleBefore, session.ElbowAngleAfter)
+                Row("Body reach", session.TorsoAngleBefore, session.TorsoAngleAfter),
+                Row("Back angle", session.ShoulderAngleBefore, session.ShoulderAngleAfter)
             }, !session.HideBeforeMeasurementsInReport);
             html.AppendLine("</div>");
 
@@ -731,12 +723,34 @@ namespace CassetteMotionPro.Workspace
             html.AppendLine("</div>");
             html.AppendLine("</div>");
             html.AppendLine("<div class=\"confidential\">" + Encode(ConfidentialNotice) + "</div>");
-            html.AppendLine("<div class=\"footer\"><span>Generated by Cassette Motion Pro v0.12.6</span><span>Professional bike fitting report</span></div>");
+            html.AppendLine("<div class=\"footer\"><span>Generated by Cassette Motion Pro v" + ReportVersion + "</span><span>Professional bike fitting report</span></div>");
             html.AppendLine("</div>");
             html.AppendLine("</div>");
             html.AppendLine("</body>");
             html.AppendLine("</html>");
             return html.ToString();
+        }
+
+        private static string GetBrandLogoDataUri()
+        {
+            try
+            {
+                using (Stream stream = typeof(FitSessionReportGenerator).Assembly.GetManifestResourceStream(BrandLogoResourceName))
+                {
+                    if (stream == null)
+                        return string.Empty;
+
+                    using (MemoryStream memory = new MemoryStream())
+                    {
+                        stream.CopyTo(memory);
+                        return "data:image/png;base64," + Convert.ToBase64String(memory.ToArray());
+                    }
+                }
+            }
+            catch
+            {
+                return string.Empty;
+            }
         }
 
         private static bool HasBikeMetricsTrace(FitSessionRecord session)

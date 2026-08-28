@@ -49,6 +49,8 @@ namespace CassetteMotionPro.Workspace
         public bool HideBeforeImageInReport { get; set; }
         public bool HideAfterImageInReport { get; set; }
         public bool HideMeasurementReferenceImageInReport { get; set; }
+        public bool HideMeasurementCaptureTraceInReport { get; set; }
+        public string ReportLogoStyle { get; set; }
 
         public string SaddleHeightBefore { get; set; }
         public string SaddleHeightAfter { get; set; }
@@ -106,6 +108,17 @@ namespace CassetteMotionPro.Workspace
                 if (!string.IsNullOrWhiteSpace(Title))
                     return Title.Trim();
                 return SessionDate == DateTime.MinValue ? "Bike Fit Session" : SessionDate.ToString("MMM d, yyyy");
+            }
+        }
+
+        [XmlIgnore]
+        public string StorageFolderName
+        {
+            get
+            {
+                DateTime date = SessionDate == DateTime.MinValue ? DateTime.Today : SessionDate;
+                string id = Id == Guid.Empty ? "pending" : Id.ToString("N").Substring(0, 8);
+                return string.Format("{0:yyyy-MM-dd}_{1}", date, id);
             }
         }
 

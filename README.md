@@ -5,13 +5,18 @@ Cassette Motion Pro is professional bike fitting software built on the
 keeps bike-fit-specific code and branding isolated so upstream Kinovea updates
 can be incorporated with minimal changes to the playback and annotation engine.
 
-## Current milestone: 0.12.6 guided fit workflow
+## Current milestone: 0.29.0 Saved evidence review before reporting
+
+- Saved Evidence Review shows the next best step before previewing or generating the report.
+- Before/After videos, Before/After report images, and Dual/composite evidence are checked separately.
+- Active session folder shortcuts include Before, After, and Dual folders for faster fit-day review.
 
 - Complete Kinovea source imported under `src/`
 - Application output renamed to `CassetteMotionPro.exe`
 - Product, company, window title, application-data folder, and multi-window
   launch behavior branded for Cassette Motion Pro
 - New application icon, splash screen, and About dialog artwork
+- Branded report header with Cassette Motion Pro logo
 - Windows installer and portable artifact names updated
 - Windows build workflow provided at `.github/workflows/build.yml`
 - Dedicated Client Manager with search and recent clients
@@ -77,6 +82,58 @@ can be incorporated with minimal changes to the playback and annotation engine.
 - Preview Report button opens the generated report immediately for review
 - Generated HTML reports include a non-printing review checklist for client name,
   images, bike metrics, and report view before saving/sending the PDF
+- Analyze buttons now force Kinovea into playback analysis mode instead of
+  leaving live capture screens open
+- Packaged drawing tools quiet technical point/segment labels so measurement
+  tools do not show construction labels such as P0/S0 over the bike
+- Video workflow includes Use Latest Both so the newest Before and After live
+  recordings can be selected together before side-by-side playback analysis
+- Dual Live Capture now opens Kinovea as two actual capture screens for the
+  active session's Before and After recording folders
+- Before/After Record Live shortcuts now route into the same two-screen live
+  capture setup so fit recording stays in the dual-camera workflow
+- Video Capture + Analysis shows the active session's Before and After
+  recording folders directly in the workspace before opening live capture
+- Recording folder guide waits until the fit session is loaded, preventing
+  startup crashes when opening a client fit session
+- Video Capture + Analysis now shows a five-step Fit Day Path guide: Client,
+  Record, Analyze, Save, and Report
+- Overview workflow wording now more clearly separates recording/analyzing in
+  Kinovea from saving evidence, Bike Metrics, and report content in the
+  workspace
+- Fit Command Center on the Overview tab puts Record Before, Use Latest Before,
+  Record After, Use Latest After, side-by-side analysis, capture folders, and
+  report image shortcuts in one simple fit-day dashboard
+- Before/After video rows now include Record Live shortcuts that open Kinovea
+  capture pointed at the active session’s Before or After video folder
+- Before/After video rows include Use Latest buttons that select the newest
+  recording saved in that session folder without browsing through files
+- Client Files is organized into client folders, active fit session folders,
+  and quick actions with direct Before/After video, report image, reports, and
+  package folder shortcuts
+- Next recommended step now includes a stage-specific folder shortcut so the
+  active Before/After video folder, Analysis Captures, report images, session
+  record, or Reports folder is one click away
+- Overview workflow path now highlights the live-fit sequence: record live, use
+  latest, analyze in Kinovea, save Bike Metrics, then generate the report
+- Windows builds explicitly package Kinovea's DrawingTools folder so the video
+  player shows the drawing, distance, angle, and annotation toolbar.
+- Overview tab includes a Fit Workflow checklist with ready/needs-step status
+  and shortcuts for videos, analysis, Bike Metrics, report images, and preview.
+- Overview tab now starts with a client-first fit path: confirm client details,
+  capture/import videos, open Kinovea tools, save Bike Metrics, then generate
+  the report from the client folder.
+- Overview and video workflow wording now emphasize that the actual bike-fit
+  measuring happens in the full Kinovea video workspace first, then photos,
+  videos, Bike Metrics, and reports are saved back to the client session.
+- Bike Fit Workspace bottom controls stay visible on smaller screens using a
+  dedicated action button row
+- Video Capture + Analysis tab labels video-opening actions as Analyze and explains that the
+  drawing tools, timeline, playback controls, and joint controls appear in the
+  main video player workspace
+- Video Capture + Analysis opens Before, After, or Before + After videos in
+  the full player workspace where the bike-fit controls appear, while keeping
+  Record Live, Browse, Analyze, comparison, and saved-evidence actions together
 - Report Package button creates a share-ready folder in the client Reports
   folder
 - Report packages include `Bike Fit Report.html` and an `Images` folder with
@@ -123,6 +180,77 @@ can be incorporated with minimal changes to the playback and annotation engine.
   Notes
 - Client Manager now shows a simple fit workflow guide and uses a clearer
   Start Fit Session primary action
+- Videos, report images, side-by-side images, reports, report packages, and
+  zipped packages save into matching per-session client folders
+- Startup splash screen now uses Cassette Motion Pro artwork instead of the
+  upstream Kinovea splash
+- Client Files tab can open the active session folder and active session
+  Reports folder directly
+- Report Images tab lets the fitter choose Full Cassette logo, CM badge, or no
+  logo for generated reports
+- Bike Fit Workspace header now shows the active client, active fit session,
+  status, and the exact per-session folder where saved work belongs
+- Save feedback now confirms the named session record was saved into the
+  client’s Measurements → Sessions folder
+- Client Files tab now includes active-session shortcuts for the session record,
+  videos, photos, side-by-side images, and reports
+- Active-session shortcuts save the current session first, create missing
+  folders, and then open the exact folder for the current fit
+- Client Files tab can add Before/After videos directly into the active fit
+  session and update the Video Capture + Analysis tab
+- Client Files tab can add Before/After report photos directly into the active
+  fit session and update the Report Images tab
+- Bike Fit Workspace bottom action bar includes a Review button for a session
+  readiness check before previewing or generating reports
+- Session Review checks required report items such as Before/After videos and
+  final Bike Metrics, while listing goals, summary, and report images as
+  optional polish
+- Bike Fit Workspace bottom controls now use a dedicated button row so Save,
+  Review, Reports, Preview, Generate, Package, Zip, and Save & Close stay
+  visible on smaller screens
+- Opening Before, After, or Before + After analysis from the fit workspace now
+  prepares an active session `Analysis Captures` folder so Kinovea captures
+  have a clear client/session destination
+- Video Capture + Analysis now includes an Open Captures Folder shortcut and clearer
+  instructions for measuring in Kinovea first, then saving evidence back to the
+  active client/session folder
+- Fit Workflow now includes an Evidence saved step that turns ready when the
+  active session Analysis Captures folder contains saved files
+- Video Capture + Analysis includes a quick save guide for evidence, final numbers,
+  report visuals, and client files
+- Report Images tab can show or hide the Measurement Capture Trace section in
+  generated reports without deleting the saved guided-capture data
+- Body Angles now uses fitter-friendly Body reach and Back angle labels, with
+  the elbow value removed from the visible workspace/report fields
+- Video Capture + Analysis includes a Check Saved Evidence button and live status line so
+  fitters can confirm Kinovea screenshots, exports, or clips landed in the
+  active session Analysis Captures folder before moving to Bike Metrics/reporting
+- Body Angles includes an in-tab guide for knee, hip, ankle, body reach, and
+  back angle measurements so fitters know what to measure in Kinovea before
+  entering report values
+- Bike Metrics includes a workflow guide for opening Kinovea tools, saving
+  evidence, recording final Before/After numbers, and reviewing the report
+- Overview includes a simplified four-stage workflow shortcut bar: Client Info,
+  Capture + Measure, Fit Results, and Report
+- Overview now shows a Next recommended step coach that updates as goals,
+  videos, saved evidence, Bike Metrics, and report images are completed
+- The Next recommended step coach now includes a single action button that jumps
+  directly to Goals, Video Capture + Analysis, Bike Metrics, Report Images, or Preview
+  so the fit workspace feels less cluttered and easier to follow
+- The Fit Workflow checklist is grouped under the same four stages so the
+  workspace feels closer to the real fitting path: client setup, Kinovea capture,
+  results entry, then report review
+- Video Capture + Analysis now has a dedicated Prepare Capture Folder button, and the
+  workflow/analysis shortcuts prepare the active session’s Analysis Captures
+  folder before measuring so saved screenshots, exports, and clips have a
+  clearer client/session destination
+- Videos and Video Analysis are merged into one Video Capture + Analysis tab so
+  recording live clips, choosing final Before/After videos, analyzing in
+  Kinovea, comparing side-by-side, and checking saved evidence happen in one
+  place
+- Dual Live Capture and Dual Playback Analysis shortcuts prepare the session's
+  Before/After recording folders and open the before/after analysis flow from
+  the command center and video workflow.
 
 The expanded body-angle measurement library and polished PDF report generator
 remain future milestones. See [docs/roadmap.md](docs/roadmap.md).

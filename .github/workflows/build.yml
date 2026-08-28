@@ -8,7 +8,8 @@ on:
   workflow_dispatch:
 
 env:
-  VERSION: 0.12.6
+  VERSION: 0.29.0
+  KINOVEA_UPSTREAM_REF: 7e7c9dcf55b6e6f0d6a7080e191a7ae9485ff3e9
 
 jobs:
   build:
@@ -35,7 +36,11 @@ jobs:
       - name: Restore upstream native dependencies
         shell: pwsh
         run: |
-          git clone --depth 1 https://github.com/Kinovea/Kinovea.git "$env:RUNNER_TEMP\kinovea-upstream"
+          git clone --no-checkout https://github.com/Kinovea/Kinovea.git "$env:RUNNER_TEMP\kinovea-upstream"
+          git -C "$env:RUNNER_TEMP\kinovea-upstream" fetch --depth 1 origin $env:KINOVEA_UPSTREAM_REF
+          git -C "$env:RUNNER_TEMP\kinovea-upstream" checkout --detach $env:KINOVEA_UPSTREAM_REF
+          Write-Host "Using Kinovea upstream ref:"
+          git -C "$env:RUNNER_TEMP\kinovea-upstream" rev-parse HEAD
           $refsSource = "$env:RUNNER_TEMP\kinovea-upstream\Refs"
           $refsTarget = "src\Refs"
           if (Test-Path "src\Refs" -PathType Leaf) {
@@ -48,6 +53,18 @@ jobs:
             throw "robocopy failed with exit code $robocopyExitCode."
           }
           $global:LASTEXITCODE = 0
+          if (Test-Path "Refs") {
+            Write-Host "Overlaying repository Refs into src\Refs for CI-stable native dependencies."
+            robocopy "Refs" $refsTarget /E /NFL /NDL /NJH /NJS /NP
+            $robocopyExitCode = $LASTEXITCODE
+            if ($robocopyExitCode -gt 7) {
+              throw "robocopy failed while overlaying repository Refs with exit code $robocopyExitCode."
+            }
+            $global:LASTEXITCODE = 0
+          }
+          if (!(Test-Path "src\Refs\FFmpeg\include\libavcodec\avcodec.h")) {
+            throw "FFmpeg headers were not restored. Expected src\Refs\FFmpeg\include\libavcodec\avcodec.h."
+          }
           Get-ChildItem $refsTarget | Select-Object Name, Length
 
       - name: Restore upstream project dependencies
@@ -89,6 +106,16 @@ jobs:
           $global:LASTEXITCODE = 0
           Get-ChildItem src -Directory -Filter "Kinovea*" | Select-Object Name
 
+      - name: Patch Kinovea report image save
+        shell: pwsh
+        run: |
+          .\build\patch-kinovea-report-image-save.ps1
+
+      - name: Patch Kinovea video button save
+        shell: pwsh
+        run: |
+          .\build\patch-kinovea-video-save.ps1
+
       - name: Setup MSBuild
         uses: microsoft/setup-msbuild@v2
 
@@ -112,6 +139,10 @@ jobs:
         shell: pwsh
         run: |
           $commonHeader = "src\Refs\FFmpeg\include\libavutil\common.h"
+          if (!(Test-Path $commonHeader)) {
+            Write-Warning "FFmpeg common.h was not found at $commonHeader. Skipping CI header patch because this dependency layout does not include that file."
+            return
+          }
           $content = Get-Content $commonHeader -Raw
           if ($content -match "UINT64_C\(0xFFFFFFFF\)") {
             $content = $content -replace "UINT64_C\(0xFFFFFFFF\)", "0xFFFFFFFFULL"
@@ -260,6 +291,90 @@ jobs:
             }
           }
 
+      - name: Restore drawing and measurement tools
+        shell: pwsh
+        run: |
+          $output = "src\Kinovea\bin\x64\Release"
+          if (!(Test-Path $output)) {
+            throw "Expected x64 output folder was not found: $output"
+          }
+
+          $upstreamRoot = "$env:RUNNER_TEMP\kinovea-upstream"
+          if (!(Test-Path $upstreamRoot)) {
+            throw "Expected upstream Kinovea checkout was not found: $upstreamRoot"
+          }
+
+          $candidates = @(
+            "$upstreamRoot\DrawingTools",
+            "$upstreamRoot\src\DrawingTools",
+            "$upstreamRoot\src\Kinovea\DrawingTools",
+            "$upstreamRoot\src\Kinovea\Resources\DrawingTools",
+            "$upstreamRoot\Kinovea\DrawingTools"
+          )
+
+          $source = $null
+          foreach ($candidate in $candidates) {
+            if (Test-Path $candidate) {
+              $source = (Get-Item $candidate).FullName
+              break
+            }
+          }
+
+          if (-not $source) {
+            $source = Get-ChildItem $upstreamRoot -Directory -Recurse -Filter "DrawingTools" |
+              Where-Object { @(Get-ChildItem $_.FullName -Recurse -File -ErrorAction SilentlyContinue).Count -gt 0 } |
+              Select-Object -First 1 -ExpandProperty FullName
+          }
+
+          if (-not $source) {
+            throw "Kinovea DrawingTools folder was not found in the upstream checkout."
+          }
+
+          $target = Join-Path $output "DrawingTools"
+          Remove-Item $target -Recurse -Force -ErrorAction SilentlyContinue
+          robocopy $source $target /E /NFL /NDL /NJH /NJS /NP
+          $robocopyExitCode = $LASTEXITCODE
+          if ($robocopyExitCode -gt 7) {
+            throw "robocopy failed while restoring DrawingTools with exit code $robocopyExitCode."
+          }
+          $global:LASTEXITCODE = 0
+
+          $toolFiles = @(Get-ChildItem $target -Recurse -File -ErrorAction SilentlyContinue)
+          if ($toolFiles.Count -eq 0) {
+            throw "DrawingTools was copied but did not contain any files."
+          }
+
+          Write-Host "Restored DrawingTools from $source to $target"
+
+          $quietedFiles = 0
+          $editableToolFiles = @(Get-ChildItem $target -Recurse -File -Include *.xml,*.json,*.txt,*.kva,*.svg -ErrorAction SilentlyContinue)
+          foreach ($file in $editableToolFiles) {
+            $content = Get-Content $file.FullName -Raw
+            $updated = $content
+
+            # Some upstream/custom drawing tools can expose technical construction labels
+            # such as P0, P1, S0 [P0, P3] while editing a measurement. Keep the real
+            # measurement value visible, but default any debug point/segment labels off.
+            $updated = $updated -replace '(?i)(\bshow(?:point|points|segment|segments|technical|debug)(?:label|labels|name|names)?\b\s*=\s*")true(")', '${1}false${2}'
+            $updated = $updated -replace '(?i)(\bdisplay(?:point|points|segment|segments|technical|debug)(?:label|labels|name|names)?\b\s*=\s*")true(")', '${1}false${2}'
+            $updated = $updated -replace '(?i)(\bdebug(?:label|labels|name|names|mode)?\b\s*=\s*")true(")', '${1}false${2}'
+            $updated = $updated -replace '(?i)(<[^>]*(?:show|display)(?:point|points|segment|segments|technical|debug)(?:label|labels|name|names)?[^>]*>\s*)true(\s*</[^>]+>)', '${1}false${2}'
+            $updated = $updated -replace '(?i)(<[^>]*debug(?:label|labels|name|names|mode)?[^>]*>\s*)true(\s*</[^>]+>)', '${1}false${2}'
+
+            if ($updated -ne $content) {
+              Set-Content $file.FullName $updated -Encoding UTF8
+              $quietedFiles++
+            }
+          }
+
+          if ($quietedFiles -gt 0) {
+            Write-Host "Quieted technical point/segment labels in $quietedFiles DrawingTools file(s)."
+          } else {
+            Write-Host "No DrawingTools debug label defaults were found to quiet."
+          }
+
+          $toolFiles | Select-Object -First 20 FullName, Length
+
       - name: Create portable settings folder
         shell: cmd
         run: mkdir src\Kinovea\bin\x64\Release\AppData
@@ -290,28 +405,93 @@ jobs:
         run: rmdir src\Kinovea\bin\x64\Release\AppData
 
       - name: Install NSIS
+        continue-on-error: true
         shell: pwsh
         run: |
-          choco install nsis -y --no-progress
           $nsisPath = Join-Path ${env:ProgramFiles(x86)} "NSIS\makensis.exe"
           if (!(Test-Path $nsisPath)) {
-            $nsisPath = (Get-Command makensis.exe -ErrorAction SilentlyContinue).Source
+            $existing = Get-Command makensis.exe -ErrorAction SilentlyContinue
+            if ($existing) {
+              $nsisPath = $existing.Source
+            }
           }
+
           if (!(Test-Path $nsisPath)) {
-            throw "makensis.exe was not found after installing NSIS."
+            for ($attempt = 1; $attempt -le 3; $attempt++) {
+              Write-Host "Installing NSIS with Chocolatey, attempt $attempt of 3..."
+              choco install nsis -y --no-progress
+              if ($LASTEXITCODE -eq 0) {
+                break
+              }
+              Write-Warning "Chocolatey NSIS install failed with exit code $LASTEXITCODE."
+              Start-Sleep -Seconds (10 * $attempt)
+            }
+
+            $nsisPath = Join-Path ${env:ProgramFiles(x86)} "NSIS\makensis.exe"
+            if (!(Test-Path $nsisPath)) {
+              $existing = Get-Command makensis.exe -ErrorAction SilentlyContinue
+              if ($existing) {
+                $nsisPath = $existing.Source
+              }
+            }
           }
-          "MAKENSIS_PATH=$nsisPath" | Out-File -FilePath $env:GITHUB_ENV -Append
-          & $nsisPath /VERSION
+
+          if (!(Test-Path $nsisPath)) {
+            try {
+              $fallbackRoot = Join-Path $env:RUNNER_TEMP "nsis-fallback"
+              $fallbackZip = Join-Path $env:RUNNER_TEMP "nsis-3.12.zip"
+              $fallbackUrl = "https://downloads.sourceforge.net/project/nsis/NSIS%203/3.12/nsis-3.12.zip"
+              New-Item -ItemType Directory -Force $fallbackRoot | Out-Null
+              Write-Host "Downloading NSIS fallback from $fallbackUrl..."
+              Invoke-WebRequest -Uri $fallbackUrl -OutFile $fallbackZip -UseBasicParsing
+              Expand-Archive -Path $fallbackZip -DestinationPath $fallbackRoot -Force
+              $fallbackMakensis = Get-ChildItem -Path $fallbackRoot -Filter "makensis.exe" -File -Recurse | Select-Object -First 1
+              if ($fallbackMakensis) {
+                $nsisPath = $fallbackMakensis.FullName
+              }
+            }
+            catch {
+              Write-Warning "Direct NSIS fallback download failed: $($_.Exception.Message)"
+            }
+          }
+
+          if (Test-Path $nsisPath) {
+            "MAKENSIS_PATH=$nsisPath" | Out-File -FilePath $env:GITHUB_ENV -Append
+            "INSTALLER_AVAILABLE=true" | Out-File -FilePath $env:GITHUB_ENV -Append
+            & $nsisPath /VERSION
+          } else {
+            "INSTALLER_AVAILABLE=false" | Out-File -FilePath $env:GITHUB_ENV -Append
+            @(
+              "Installer build status: SKIPPED"
+              "Version: $env:VERSION"
+              "Reason: makensis.exe was not available on the GitHub runner."
+              ""
+              "The portable zip was still created and uploaded."
+              "Download CassetteMotionPro-Windows-$env:VERSION or CassetteMotionPro-Portable-$env:VERSION."
+            ) | Set-Content "dist\windows\INSTALLER-BUILD-STATUS.txt"
+            Write-Warning "makensis.exe was not found. Skipping installer, but keeping the Windows bundle successful."
+            $global:LASTEXITCODE = 0
+          }
 
       - name: Build installer
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force dist\installer
           New-Item -ItemType Directory -Force dist\windows
+          if ([string]::IsNullOrWhiteSpace($env:MAKENSIS_PATH) -or !(Test-Path $env:MAKENSIS_PATH)) {
+            @(
+              "Installer build status: SKIPPED"
+              "Version: $env:VERSION"
+              "Reason: makensis.exe was not available on the GitHub runner."
+              ""
+              "The portable zip was still created and uploaded."
+              "Download CassetteMotionPro-Windows-$env:VERSION or CassetteMotionPro-Portable-$env:VERSION."
+            ) | Set-Content "dist\windows\INSTALLER-BUILD-STATUS.txt"
+            Write-Warning "Skipping installer because MAKENSIS_PATH is missing or invalid: $env:MAKENSIS_PATH"
+            return
+          }
+
           try {
-            if ([string]::IsNullOrWhiteSpace($env:MAKENSIS_PATH) -or !(Test-Path $env:MAKENSIS_PATH)) {
-              throw "MAKENSIS_PATH is missing or invalid: $env:MAKENSIS_PATH"
-            }
 
             Push-Location src\Installer
             Write-Host "Installer source files:"
@@ -368,7 +548,7 @@ jobs:
           }
 
       - name: Upload installer
-        if: success()
+        if: hashFiles('dist/installer/*.exe') != ''
         uses: actions/upload-artifact@v6
         with:
           name: CassetteMotionPro-Installer-${{ env.VERSION }}

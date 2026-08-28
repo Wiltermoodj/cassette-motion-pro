@@ -60,6 +60,12 @@ namespace Kinovea.Root
         private Stopwatch stopwatch = new Stopwatch();
         private ClientRepository clientRepository;
         private System.Windows.Forms.Timer bodyAngleActivationTimer;
+        private System.Windows.Forms.Timer clientCaptureFolderLockTimer;
+        private CaptureFolder lockedSingleCaptureFolder;
+        private CaptureFolder lockedBeforeCaptureFolder;
+        private CaptureFolder lockedAfterCaptureFolder;
+        private string lockedSingleCapturePrefix;
+        private int clientCaptureFolderLockTicks;
         
         #region Menus
 
@@ -221,6 +227,24 @@ namespace Kinovea.Root
             ExtendUI();
 
             FormsHelper.SetMainForm(mainWindow);
+            CassetteReportImageSaveRouter.SaveReportImageRequested = SaveKinoveaReportImage;
+            CassetteVideoSaveRouter.ChooseVideoSavePathRequested = ChooseKinoveaVideoSavePath;
+            CassetteVideoSaveRouter.VideoSaveCompleted = KinoveaVideoSaveCompleted;
+        }
+
+        private bool SaveKinoveaReportImage(IWin32Window owner, Bitmap bitmap, string suggestedFileName)
+        {
+            return ReportImageSaveTarget.TrySave(owner ?? mainWindow, bitmap, suggestedFileName);
+        }
+
+        private string ChooseKinoveaVideoSavePath(IWin32Window owner, string suggestedFileName, string preferredFormat)
+        {
+            return VideoSaveTarget.ChooseSavePath(owner ?? mainWindow, suggestedFileName, preferredFormat);
+        }
+
+        private void KinoveaVideoSaveCompleted(string path)
+        {
+            VideoSaveTarget.NotifyVideoSaved(path);
         }
         #endregion
 
@@ -290,7 +314,7 @@ namespace Kinovea.Root
 
         public void RefreshUICulture()
         {
-            RefreshUICulture(true);
+            throw new NotImplementedException();
         }
 
         private void RefreshUICulture(bool subModules)
@@ -314,7 +338,7 @@ namespace Kinovea.Root
 
         public void PreferencesUpdated()
         {
-            PreferencesUpdated(true);
+            throw new NotImplementedException();
         }
 
         /// <summary>
@@ -708,9 +732,65 @@ namespace Kinovea.Root
 
             clientRepository.MarkOpened(client);
             statusLabel.Text = string.Format("Fit session: {0} · {1}", client.DisplayName, client.BikeDescription);
-            using (BikeFitWorkspaceForm form = new BikeFitWorkspaceForm(client, OpenFromPath, OpenBeforeAfterPair, OpenBodyAngleGuide))
+            using (BikeFitWorkspaceForm form = new BikeFitWorkspaceForm(client, OpenAnalysisFromPath, OpenBeforeAfterPair, PrepareClientAnalysisCaptureFolder, OpenClientCaptureFolder, OpenDualClientCaptureFolders, OpenBodyAngleGuide))
                 form.ShowDialog(mainWindow);
             BuildRecentClientMenus();
+        }
+
+        private void OpenClientCaptureFolder(string path)
+        {
+            if (string.IsNullOrEmpty(path))
+                return;
+
+            Directory.CreateDirectory(path);
+            CaptureFolder captureFolder = PreferencesManager.CapturePreferences.AddCaptureFolder(path);
+
+            // Make sure capture screens here and in other windows see the active client/session video folder.
+            PreferencesUpdated(true);
+            EnsureCaptureScreenCount(1);
+            ConfigureClientCaptureFolders(captureFolder, null, null, "Live");
+            StartClientCaptureFolderLock(captureFolder, null, null, "Live");
+            statusLabel.Text = string.Format("Live capture ready: saving to {0}", path);
+            screenManager.AfterSharedBufferChange();
+            screenManager.OrganizeScreens();
+            screenManager.OrganizeCommonControls();
+            screenManager.OrganizeMenus();
+        }
+
+        private void OpenDualClientCaptureFolders(string beforePath, string afterPath)
+        {
+            if (string.IsNullOrEmpty(beforePath) || string.IsNullOrEmpty(afterPath))
+                return;
+
+            Directory.CreateDirectory(beforePath);
+            Directory.CreateDirectory(afterPath);
+            CaptureFolder beforeFolder = PreferencesManager.CapturePreferences.AddCaptureFolder(beforePath);
+            CaptureFolder afterFolder = PreferencesManager.CapturePreferences.AddCaptureFolder(afterPath);
+
+            // Make sure capture screens see the active client/session folders.
+            PreferencesUpdated(true);
+
+            EnsureCaptureScreenCount(2);
+            ConfigureClientCaptureFolders(null, beforeFolder, afterFolder, null);
+            StartClientCaptureFolderLock(null, beforeFolder, afterFolder, null);
+            statusLabel.Text = string.Format("Dual live capture ready: left saves Before, right saves After.");
+            screenManager.AfterSharedBufferChange();
+            screenManager.OrganizeScreens();
+            screenManager.OrganizeCommonControls();
+            screenManager.OrganizeMenus();
+        }
+
+        private void PrepareClientAnalysisCaptureFolder(string path)
+        {
+            if (string.IsNullOrEmpty(path))
+                return;
+
+            Directory.CreateDirectory(path);
+            PreferencesManager.CapturePreferences.AddCaptureFolder(path);
+
+            // Make sure capture screens here and in other windows see the active client/session capture folder.
+            PreferencesUpdated(true);
+            statusLabel.Text = string.Format("Analysis capture folder: {0}", path);
         }
 
         private void OpenBodyAngleGuide(string path)
@@ -1326,18 +1406,39 @@ namespace Kinovea.Root
             }
         }
 
+        private void OpenAnalysisFromPath(string path)
+        {
+            if (string.IsNullOrEmpty(path))
+                return;
+
+            if (!File.Exists(path))
+            {
+                MessageBox.Show(ScreenManagerLang.LoadMovie_FileNotOpened, ScreenManagerLang.LoadMovie_Error, MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
+                return;
+            }
+
+            EnsurePlaybackScreenCount(1);
+            LoadVideoInTargetScreen(path, 0);
+            screenManager.OrganizeScreens();
+        }
+
         private void OpenBeforeAfterPair(string beforePath, string afterPath)
         {
             if (string.IsNullOrEmpty(beforePath) || string.IsNullOrEmpty(afterPath) || !File.Exists(beforePath) || !File.Exists(afterPath))
                 return;
 
-            EnsureTwoPlaybackScreens();
+            EnsurePlaybackScreenCount(2);
             LoadVideoInTargetScreen(beforePath, 0);
             LoadVideoInTargetScreen(afterPath, 1);
             screenManager.OrganizeScreens();
         }
 
         private void EnsureTwoPlaybackScreens()
+        {
+            EnsurePlaybackScreenCount(2);
+        }
+
+        private void EnsurePlaybackScreenCount(int requiredScreens)
         {
             for (int index = screenManager.ScreenCount - 1; index >= 0; index--)
             {
@@ -1346,14 +1447,103 @@ namespace Kinovea.Root
                     screenManager.RemoveScreen(screen);
             }
 
-            if (screenManager.ScreenCount == 0)
+            while (screenManager.ScreenCount > requiredScreens)
             {
-                screenManager.AddPlayerScreen();
-                screenManager.AddPlayerScreen();
+                AbstractScreen screen = screenManager.GetScreenAt(screenManager.ScreenCount - 1);
+                if (screen == null)
+                    break;
+                screenManager.RemoveScreen(screen);
             }
-            else if (screenManager.ScreenCount == 1)
-            {
+
+            while (screenManager.ScreenCount < requiredScreens)
                 screenManager.AddPlayerScreen();
+        }
+
+        private void EnsureCaptureScreenCount(int requiredScreens)
+        {
+            for (int index = screenManager.ScreenCount - 1; index >= 0; index--)
+            {
+                AbstractScreen screen = screenManager.GetScreenAt(index);
+                if (screen != null && !(screen is CaptureScreen))
+                    screenManager.RemoveScreen(screen);
+            }
+
+            while (screenManager.ScreenCount > requiredScreens)
+            {
+                AbstractScreen screen = screenManager.GetScreenAt(screenManager.ScreenCount - 1);
+                if (screen == null)
+                    break;
+                screenManager.RemoveScreen(screen);
+            }
+
+            while (screenManager.ScreenCount < requiredScreens)
+                screenManager.AddCaptureScreen();
+        }
+
+        private void ConfigureCaptureScreenFolder(int screenIndex, CaptureFolder captureFolder, string fileNamePrefix)
+        {
+            if (captureFolder == null)
+                return;
+
+            CaptureScreen captureScreen = screenManager.GetScreenAt(screenIndex) as CaptureScreen;
+            if (captureScreen == null)
+                return;
+
+            ScreenDescriptorCapture descriptor = captureScreen.GetScreenDescriptor() as ScreenDescriptorCapture;
+            if (descriptor == null)
+                descriptor = new ScreenDescriptorCapture();
+
+            descriptor.CaptureFolder = captureFolder.Id;
+            descriptor.FileName = string.IsNullOrEmpty(fileNamePrefix) ? "%dateb%-%time%" : fileNamePrefix + "-%dateb%-%time%";
+            captureScreen.ConfigureScreen(descriptor);
+        }
+
+        private void ConfigureClientCaptureFolders(CaptureFolder singleFolder, CaptureFolder beforeFolder, CaptureFolder afterFolder, string singlePrefix)
+        {
+            if (singleFolder != null)
+            {
+                ConfigureCaptureScreenFolder(0, singleFolder, singlePrefix);
+                return;
+            }
+
+            ConfigureCaptureScreenFolder(0, beforeFolder, "Before");
+            ConfigureCaptureScreenFolder(1, afterFolder, "After");
+        }
+
+        private void StartClientCaptureFolderLock(CaptureFolder singleFolder, CaptureFolder beforeFolder, CaptureFolder afterFolder, string singlePrefix)
+        {
+            lockedSingleCaptureFolder = singleFolder;
+            lockedBeforeCaptureFolder = beforeFolder;
+            lockedAfterCaptureFolder = afterFolder;
+            lockedSingleCapturePrefix = singlePrefix;
+            clientCaptureFolderLockTicks = 0;
+
+            if (clientCaptureFolderLockTimer != null)
+            {
+                clientCaptureFolderLockTimer.Stop();
+                clientCaptureFolderLockTimer.Dispose();
+            }
+
+            clientCaptureFolderLockTimer = new System.Windows.Forms.Timer();
+            clientCaptureFolderLockTimer.Interval = 1000;
+            clientCaptureFolderLockTimer.Tick += ClientCaptureFolderLockTimer_Tick;
+            clientCaptureFolderLockTimer.Start();
+        }
+
+        private void ClientCaptureFolderLockTimer_Tick(object sender, EventArgs e)
+        {
+            clientCaptureFolderLockTicks++;
+            ConfigureClientCaptureFolders(lockedSingleCaptureFolder, lockedBeforeCaptureFolder, lockedAfterCaptureFolder, lockedSingleCapturePrefix);
+
+            if (clientCaptureFolderLockTicks >= 30)
+            {
+                clientCaptureFolderLockTimer.Stop();
+                clientCaptureFolderLockTimer.Dispose();
+                clientCaptureFolderLockTimer = null;
+                lockedSingleCaptureFolder = null;
+                lockedBeforeCaptureFolder = null;
+                lockedAfterCaptureFolder = null;
+                lockedSingleCapturePrefix = null;
             }
         }
 
@@ -1368,6 +1558,7 @@ namespace Kinovea.Root
 
             LoaderVideo.LoadVideoInScreen(screenManager, path, targetScreen, sdp);
         }
+
         private void ToggleFullScreen()
         {
             mainWindow.ToggleFullScreen();
